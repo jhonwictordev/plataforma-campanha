@@ -59,6 +59,23 @@ PAPEIS_EQUIPE_ESCRITA = (
     "coordenador_regional",
     "mobilizador",
 )
+PAPEIS_METAS_LEITURA = (
+    "administrador",
+    "coordenador_geral",
+    "coordenador_regional",
+    "financeiro",
+    "comunicacao",
+    "mobilizador",
+    "visualizador",
+)
+PAPEIS_METAS_ESCRITA = (
+    "administrador",
+    "coordenador_geral",
+    "coordenador_regional",
+    "financeiro",
+    "comunicacao",
+    "mobilizador",
+)
 PAPEIS_FINANCEIRO = ("administrador", "coordenador_geral", "financeiro")
 PAPEIS_COMUNICACAO = ("administrador", "coordenador_geral", "coordenador_regional", "comunicacao")
 PAPEIS_AUDITORIA = ("administrador", "coordenador_geral")
