@@ -20,6 +20,7 @@ SECRET_KEY=gere_uma_chave_longa_e_exclusiva
 DEBUG=False
 ALLOWED_HOSTS=seu-dominio.com,www.seu-dominio.com
 CSRF_TRUSTED_ORIGINS=https://seu-dominio.com,https://www.seu-dominio.com
+DATABASE_URL=
 
 POSTGRES_DB=plataforma_campanha
 POSTGRES_USER=usuario_aplicacao
@@ -30,6 +31,7 @@ POSTGRES_PORT=5432
 REDIS_URL=redis://127.0.0.1:6379/0
 CELERY_BROKER_URL=redis://127.0.0.1:6379/0
 CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/1
+HEALTHCHECK_VERIFY_REDIS=True
 DEFAULT_FROM_EMAIL=nao-responda@seu-dominio.com
 WHATSAPP_OFFICIAL_API_URL=https://api-oficial-whatsapp.exemplo.com/messages
 WHATSAPP_OFFICIAL_API_TOKEN=defina_token_oficial_whatsapp
@@ -39,6 +41,8 @@ SMS_OFFICIAL_API_TOKEN=defina_token_oficial_sms
 SMS_OFFICIAL_WEBHOOK_TOKEN=defina_token_webhook_sms
 EMAIL_OFFICIAL_WEBHOOK_TOKEN=defina_token_webhook_email
 ```
+
+Se a plataforma de hospedagem fornecer apenas uma string unica de conexao com PostgreSQL, use `DATABASE_URL`. Quando ela estiver preenchida, o sistema passa a ignorar `POSTGRES_*`.
 
 ## 3. Preparacao da aplicacao
 
@@ -114,6 +118,7 @@ Para reconciliar retorno oficial de status, configure os endpoints abaixo no pro
 - Banco e Redis acessiveis apenas pela rede interna
 - Rotina de backup configurada
 - Politicas de retencao revisadas com apoio juridico e contabil
+- Endpoint `/saude/prontidao/` configurado como health check do provedor
 
 ## 7. Backup operacional
 
@@ -137,3 +142,16 @@ Se o binario nao estiver no `PATH`, defina a variavel opcional `PG_DUMP_BIN`.
 - Nao replique bases reais em homologacao sem anonimizar.
 - Revise periodicamente o modulo `auditoria` para acompanhar logs, solicitacoes do titular e politicas de retencao.
 - Toda validacao final de regras eleitorais, contabeis e de tratamento de dados deve passar por apoio juridico e contabil especializado.
+
+## 9. Blueprint Render
+
+O repositorio inclui um `render.yaml` pronto para Blueprint com:
+
+- 1 web service Django/Gunicorn
+- 1 worker Celery
+- 1 beat Celery
+- 1 Render Key Value
+- 1 banco PostgreSQL gerenciado
+
+Antes da primeira sincronizacao, revise os planos e preencha manualmente as variaveis marcadas com `sync: false`.
+Use a mesma `SECRET_KEY`, os mesmos `ALLOWED_HOSTS` e as mesmas `CSRF_TRUSTED_ORIGINS` nos tres servicos Django/Celery do blueprint.

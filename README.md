@@ -170,6 +170,19 @@ python manage.py makemigrations --check --dry-run --noinput --settings=config.se
 python manage.py test --settings=config.settings.test
 ```
 
+## Saude da aplicacao
+
+Para monitoramento e deploy automatizado, o projeto expoe endpoints publicos de saude:
+
+- `GET /saude/`: valida que o processo web esta respondendo
+- `GET /saude/prontidao/`: valida banco, migrations e opcionalmente Redis
+
+Se quiser que a prontidao tambem falhe quando Redis estiver indisponivel, habilite:
+
+```env
+HEALTHCHECK_VERIFY_REDIS=True
+```
+
 ## Seguranca
 
 - `.env` real deve permanecer fora do Git
@@ -177,6 +190,7 @@ python manage.py test --settings=config.settings.test
 - `SECRET_KEY` e credenciais nunca devem ficar no codigo ou no `docker-compose.yml`
 - producao exige `DEBUG=False`
 - `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` precisam ser configurados explicitamente
+- `DATABASE_URL` pode ser usado em plataformas como Render; se ele estiver definido, tem prioridade sobre `POSTGRES_*`
 - cookies de sessao e CSRF usam configuracoes seguras no ambiente de producao
 - PostgreSQL e Redis nao ficam expostos publicamente pelo `docker-compose.yml`
 - o sistema usa trilha de auditoria, logs de seguranca, soft delete e isolamento por campanha
@@ -184,6 +198,13 @@ python manage.py test --settings=config.settings.test
 ## Deploy
 
 O passo a passo completo de implantacao esta em [docs/deploy.md](docs/deploy.md).
+
+O repositorio tambem inclui:
+
+- `render.yaml` para blueprint de deploy com web, Redis, worker, beat e PostgreSQL
+- `.github/workflows/ci.yml` para checks e testes automaticos no GitHub
+
+No fluxo do Render, preencha a mesma `SECRET_KEY`, os mesmos `ALLOWED_HOSTS` e as mesmas `CSRF_TRUSTED_ORIGINS` para web, worker e beat.
 
 Resumo rapido:
 

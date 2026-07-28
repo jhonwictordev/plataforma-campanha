@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 
 from agenda.models import EventoAgenda
@@ -13,6 +14,7 @@ from .services import construir_payload, resolver_camada, resolver_periodo
 
 class MapaEleitoralViewSet(ViewSetAnaliticoCampanhaProtegido):
     niveis_permitidos = PAPEIS_CRM
+    serializer_class = MapaEleitoralRespostaSerializer
 
     def _querysets_base(self):
         return {
@@ -45,6 +47,7 @@ class MapaEleitoralViewSet(ViewSetAnaliticoCampanhaProtegido):
             dados["eventos"] = dados["eventos"].filter(endereco__icontains=bairro)
         return cidade, bairro, dados
 
+    @extend_schema(responses=MapaEleitoralRespostaSerializer)
     def list(self, request):
         periodo, data_inicial, data_final = resolver_periodo(request.query_params.get("periodo"))
         camada_ativa = resolver_camada(request.query_params.get("camada"))

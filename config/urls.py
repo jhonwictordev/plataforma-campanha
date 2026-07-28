@@ -46,6 +46,7 @@ api_router.register("mapa-eleitoral", MapaEleitoralViewSet, basename="api-mapa-e
 api_router.register("metas-campanha", MetaCampanhaViewSet, basename="api-metas-campanha")
 
 urlpatterns = [
+    path("", include("core.urls")),
     path("admin/", admin.site.urls),
     path("contas/", include("django.contrib.auth.urls")),
     path("usuarios/", include("usuarios.urls")),

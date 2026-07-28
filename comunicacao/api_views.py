@@ -1,3 +1,6 @@
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 from rest_framework import status
 from django.utils import timezone
 
@@ -117,6 +120,37 @@ class WebhookComunicacaoAPIView(APIView):
     permission_classes = []
     throttle_classes = []
 
+    @extend_schema(
+        tags=["comunicacao"],
+        request=OpenApiTypes.OBJECT,
+        responses={
+            200: inline_serializer(
+                name="WebhookComunicacaoSucessoSerializer",
+                fields={
+                    "detail": serializers.CharField(),
+                    "status": serializers.CharField(required=False),
+                    "registro_id": serializers.CharField(required=False, allow_blank=True),
+                    "envio_id": serializers.CharField(required=False, allow_blank=True),
+                },
+            ),
+            202: inline_serializer(
+                name="WebhookComunicacaoAceitoSerializer",
+                fields={
+                    "detail": serializers.CharField(),
+                    "status": serializers.CharField(required=False),
+                    "registro_id": serializers.CharField(required=False, allow_blank=True),
+                },
+            ),
+            403: inline_serializer(
+                name="WebhookComunicacaoErroSerializer",
+                fields={
+                    "detail": serializers.CharField(),
+                    "status": serializers.CharField(required=False),
+                    "registro_id": serializers.CharField(required=False, allow_blank=True),
+                },
+            ),
+        },
+    )
     def post(self, request, canal):
         canais_validos = {
             CanalComunicacao.EMAIL,

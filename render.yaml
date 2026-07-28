@@ -1,0 +1,179 @@
+databases:
+  - name: plataforma-campanha-db
+    plan: free
+
+services:
+  - type: keyvalue
+    name: plataforma-campanha-redis
+    plan: starter
+    ipAllowList: []
+
+  - type: web
+    name: plataforma-campanha-web
+    runtime: python
+    plan: starter
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    preDeployCommand: python manage.py migrate && python manage.py sincronizar_rotinas_celery
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    healthCheckPath: /saude/prontidao/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: plataforma-campanha-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: WHATSAPP_OFFICIAL_API_URL
+        sync: false
+      - key: WHATSAPP_OFFICIAL_API_TOKEN
+        sync: false
+      - key: WHATSAPP_OFFICIAL_WEBHOOK_TOKEN
+        sync: false
+      - key: SMS_OFFICIAL_API_URL
+        sync: false
+      - key: SMS_OFFICIAL_API_TOKEN
+        sync: false
+      - key: SMS_OFFICIAL_WEBHOOK_TOKEN
+        sync: false
+      - key: EMAIL_OFFICIAL_WEBHOOK_TOKEN
+        sync: false
+
+  - type: worker
+    name: plataforma-campanha-celery
+    runtime: python
+    plan: starter
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A config worker -l info
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: plataforma-campanha-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: WHATSAPP_OFFICIAL_API_URL
+        sync: false
+      - key: WHATSAPP_OFFICIAL_API_TOKEN
+        sync: false
+      - key: WHATSAPP_OFFICIAL_WEBHOOK_TOKEN
+        sync: false
+      - key: SMS_OFFICIAL_API_URL
+        sync: false
+      - key: SMS_OFFICIAL_API_TOKEN
+        sync: false
+      - key: SMS_OFFICIAL_WEBHOOK_TOKEN
+        sync: false
+      - key: EMAIL_OFFICIAL_WEBHOOK_TOKEN
+        sync: false
+
+  - type: worker
+    name: plataforma-campanha-celery-beat
+    runtime: python
+    plan: starter
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: plataforma-campanha-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: plataforma-campanha-redis
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: WHATSAPP_OFFICIAL_API_URL
+        sync: false
+      - key: WHATSAPP_OFFICIAL_API_TOKEN
+        sync: false
+      - key: WHATSAPP_OFFICIAL_WEBHOOK_TOKEN
+        sync: false
+      - key: SMS_OFFICIAL_API_URL
+        sync: false
+      - key: SMS_OFFICIAL_API_TOKEN
+        sync: false
+      - key: SMS_OFFICIAL_WEBHOOK_TOKEN
+        sync: false
+      - key: EMAIL_OFFICIAL_WEBHOOK_TOKEN
+        sync: false

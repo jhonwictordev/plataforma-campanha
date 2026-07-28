@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
@@ -23,6 +24,31 @@ def obter_texto_obrigatorio(nome: str) -> str:
     if not valor:
         raise ImproperlyConfigured(f"A variável de ambiente {nome} é obrigatória.")
     return valor
+
+
+def obter_configuracao_banco() -> dict:
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if database_url:
+        parsed = urlparse(database_url)
+        if parsed.scheme not in {"postgres", "postgresql"}:
+            raise ImproperlyConfigured("DATABASE_URL deve usar o esquema postgres:// ou postgresql://.")
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": parsed.path.lstrip("/"),
+            "USER": unquote(parsed.username or ""),
+            "PASSWORD": unquote(parsed.password or ""),
+            "HOST": parsed.hostname or "",
+            "PORT": str(parsed.port or "5432"),
+        }
+
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": obter_texto_obrigatorio("POSTGRES_DB"),
+        "USER": obter_texto_obrigatorio("POSTGRES_USER"),
+        "PASSWORD": obter_texto_obrigatorio("POSTGRES_PASSWORD"),
+        "HOST": obter_texto_obrigatorio("POSTGRES_HOST"),
+        "PORT": obter_texto_obrigatorio("POSTGRES_PORT"),
+    }
 
 
 def validar_configuracao_producao() -> None:
@@ -112,14 +138,7 @@ TEMPLATES = [
 ]
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": obter_texto_obrigatorio("POSTGRES_DB"),
-        "USER": obter_texto_obrigatorio("POSTGRES_USER"),
-        "PASSWORD": obter_texto_obrigatorio("POSTGRES_PASSWORD"),
-        "HOST": obter_texto_obrigatorio("POSTGRES_HOST"),
-        "PORT": obter_texto_obrigatorio("POSTGRES_PORT"),
-    }
+    "default": obter_configuracao_banco()
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -193,6 +212,17 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API REST para gestão de campanhas políticas com foco em governança, LGPD e territorialidade.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "AgendaTipoEnum": "agenda.models.EventoAgenda.Tipos",
+        "FinanceiroTipoEnum": [
+            ("receita", "Receita"),
+            ("despesa", "Despesa"),
+            ("doacao", "Doacao"),
+        ],
+        "ParceiroFinanceiroTipoEnum": "financeiro.models.ParceiroFinanceiro.Tipos",
+        "InteracaoLiderancaTipoEnum": "liderancas.models.InteracaoLideranca.Tipos",
+        "MetaCampanhaTipoEnum": "metas.models.MetaCampanha.Tipos",
+    },
 }
 
 AXES_FAILURE_LIMIT = 5

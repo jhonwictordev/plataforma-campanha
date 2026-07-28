@@ -1,10 +1,12 @@
 import json
+import os
 import tempfile
 from datetime import timedelta
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
 from django.utils import timezone
 from django.test import TestCase
@@ -14,6 +16,8 @@ from agenda.models import EventoAgenda
 from auditoria.models import PoliticaRetencaoDados, SolicitacaoTitularDados
 from campanhas.models import Campanha
 from comunicacao.models import CampanhaComunicacao, NotificacaoInterna
+from config.settings.base import obter_configuracao_banco
+from core.health import obter_estado_prontidao
 from core.tasks import (
     gerar_alertas_financeiros,
     gerar_alertas_lgpd,
@@ -28,6 +32,89 @@ from eleitores.models import ContatoCRM
 from financeiro.models import LancamentoFinanceiro
 from liderancas.models import Lideranca
 from usuarios.models import Usuario
+
+
+class ConfiguracaoBancoTestCase(TestCase):
+    @patch.dict(
+        os.environ,
+        {
+            "DATABASE_URL": "postgresql://usuario%40demo:senha%402026@db.render.com:5432/plataforma_render",
+        },
+        clear=False,
+    )
+    def test_obter_configuracao_banco_suporta_database_url(self):
+        configuracao = obter_configuracao_banco()
+        self.assertEqual(configuracao["NAME"], "plataforma_render")
+        self.assertEqual(configuracao["USER"], "usuario@demo")
+        self.assertEqual(configuracao["PASSWORD"], "senha@2026")
+        self.assertEqual(configuracao["HOST"], "db.render.com")
+        self.assertEqual(configuracao["PORT"], "5432")
+
+    @patch.dict(
+        os.environ,
+        {
+            "DATABASE_URL": "mysql://usuario:senha@db.exemplo.com:3306/plataforma",
+        },
+        clear=False,
+    )
+    def test_obter_configuracao_banco_rejeita_database_url_invalida(self):
+        with self.assertRaises(ImproperlyConfigured):
+            obter_configuracao_banco()
+
+
+class HealthcheckViewTestCase(TestCase):
+    def test_saude_retorna_ok(self):
+        response = self.client.get("/saude/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+
+    @patch("core.views.obter_estado_prontidao")
+    def test_prontidao_retorna_ok_quando_dependencias_estao_saudaveis(self, mocked_estado):
+        mocked_estado.return_value = (
+            {
+                "status": "ok",
+                "aplicacao": "plataforma_campanha",
+                "componentes": {
+                    "banco_dados": {"status": "ok"},
+                    "migracoes": {"status": "ok"},
+                    "redis": {"status": "ignorado"},
+                },
+            },
+            200,
+        )
+
+        response = self.client.get("/saude/prontidao/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+
+    @patch("core.views.obter_estado_prontidao")
+    def test_prontidao_retorna_503_quando_ha_falha(self, mocked_estado):
+        mocked_estado.return_value = (
+            {
+                "status": "erro",
+                "aplicacao": "plataforma_campanha",
+                "componentes": {
+                    "banco_dados": {"status": "erro", "detalhe": "Falha de conexao"},
+                    "migracoes": {"status": "ok"},
+                    "redis": {"status": "ignorado"},
+                },
+            },
+            503,
+        )
+
+        response = self.client.get("/saude/prontidao/")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["status"], "erro")
+
+    @patch.dict(os.environ, {"HEALTHCHECK_VERIFY_REDIS": "0"}, clear=False)
+    def test_obter_estado_prontidao_valida_banco_e_migracoes(self):
+        payload, status_http = obter_estado_prontidao()
+        self.assertEqual(status_http, 200)
+        self.assertEqual(payload["componentes"]["banco_dados"]["status"], "ok")
+        self.assertEqual(payload["componentes"]["migracoes"]["status"], "ok")
+        self.assertEqual(payload["componentes"]["redis"]["status"], "ignorado")
 
 
 class ComandosOperacionaisTestCase(TestCase):
