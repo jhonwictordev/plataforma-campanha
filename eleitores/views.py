@@ -1,7 +1,9 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.generic import CreateView, DetailView, FormView, ListView, TemplateView, UpdateView, View
 
 from usuarios.models import Usuario
@@ -9,8 +11,14 @@ from usuarios.models import Usuario
 from core.mixins import FiltroCampanhaMixin, MensagemSucessoMixin, NivelAcessoMixin
 from core.permissions import PAPEIS_CRM_ESCRITA, PAPEIS_CRM_LEITURA, filtrar_queryset_por_usuario, usuario_tem_nivel
 
-from .forms import ContatoCRMFormulario, ExportacaoContatoCRMFormulario, ImportacaoContatoCRMFormulario
-from .models import ContatoCRM
+from .forms import (
+    ContatoCRMFormulario,
+    ExportacaoContatoCRMFormulario,
+    ImportacaoContatoCRMFormulario,
+    InteracaoContatoFormulario,
+    TarefaContatoFormulario,
+)
+from .models import ContatoCRM, InteracaoContato, TarefaContato
 from .services import (
     COLUNAS_IMPORTACAO_EXEMPLO,
     agrupar_contatos_por_status,
@@ -66,8 +74,28 @@ class ContatoCRMListaBaseMixin:
         queryset = ContatoCRM.objects.only("tags")
         if not (self.request.user.is_superuser or getattr(self.request.user, "is_staff", False)):
             queryset = queryset.filter(campanha_id=getattr(self.request.user, "campanha_id", None))
-        tags = sorted({tag for contato in queryset for tag in (contato.tags or []) if tag})
-        return tags
+        return sorted({tag for contato in queryset for tag in (contato.tags or []) if tag})
+
+
+class ContatoCRMProtegidoMixin:
+    def get_contato(self):
+        if not hasattr(self, "_contato_relacionado"):
+            queryset = ContatoCRM.objects.select_related("lideranca_relacionada", "responsavel_cadastro")
+            queryset = filtrar_queryset_por_usuario(queryset, self.request.user)
+            self._contato_relacionado = get_object_or_404(queryset, pk=self.kwargs["contato_pk"])
+        return self._contato_relacionado
+
+
+class InteracaoContatoQuerysetMixin:
+    def get_queryset(self):
+        queryset = super().get_queryset().select_related("contato", "responsavel")
+        return filtrar_queryset_por_usuario(queryset, self.request.user)
+
+
+class TarefaContatoQuerysetMixin:
+    def get_queryset(self):
+        queryset = super().get_queryset().select_related("contato", "responsavel")
+        return filtrar_queryset_por_usuario(queryset, self.request.user)
 
 
 class EleitoresHomeView(LoginRequiredMixin, NivelAcessoMixin, FiltroCampanhaMixin, ContatoCRMListaBaseMixin, ListView):
@@ -138,11 +166,7 @@ class ContatoCRMImportarView(LoginRequiredMixin, NivelAcessoMixin, FormView):
             f"{self.resultado_importacao['ignorados']} ignorados",
         ]
         nivel = messages.WARNING if self.resultado_importacao["erros"] else messages.SUCCESS
-        messages.add_message(
-            self.request,
-            level=nivel,
-            message=f"Importacao concluida: {', '.join(mensagens)}.",
-        )
+        messages.add_message(self.request, level=nivel, message=f"Importacao concluida: {', '.join(mensagens)}.")
         return self.render_to_response(self.get_context_data(form=form))
 
     def get_context_data(self, **kwargs):
@@ -166,10 +190,7 @@ class ContatoCRMExportarView(LoginRequiredMixin, NivelAcessoMixin, ContatoCRMLis
         queryset = self._queryset_filtrado().order_by("nome_completo", "pk")
         queryset = contatos_autorizados_para_exportacao(queryset)
         if not queryset.exists():
-            messages.warning(
-                request,
-                "Nao ha contatos autorizados para exportacao com os filtros informados.",
-            )
+            messages.warning(request, "Nao ha contatos autorizados para exportacao com os filtros informados.")
             return self._redirecionar_home()
 
         formato = formulario.cleaned_data["formato"]
@@ -184,14 +205,8 @@ class ContatoCRMExportarView(LoginRequiredMixin, NivelAcessoMixin, ContatoCRMLis
         if "formato" in query:
             query.pop("formato")
         if query:
-            return self._redirect_with_query(url, query.urlencode())
-        return self._redirect_with_query(url, "")
-
-    def _redirect_with_query(self, url, querystring):
-        from django.shortcuts import redirect
-
-        destino = f"{url}?{querystring}" if querystring else str(url)
-        return redirect(destino)
+            return redirect(f"{url}?{query.urlencode()}")
+        return redirect(url)
 
 
 class ContatoCRMCreateView(LoginRequiredMixin, NivelAcessoMixin, MensagemSucessoMixin, CreateView):
@@ -222,7 +237,18 @@ class ContatoCRMDetailView(LoginRequiredMixin, NivelAcessoMixin, FiltroCampanhaM
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        interacoes = self.object.interacoes.select_related("responsavel").order_by("-data_hora", "-pk")[:10]
+        tarefas = self.object.tarefas.select_related("responsavel").order_by("concluida", "prazo", "pk")[:10]
+        agora = timezone.now()
         context["pode_editar"] = usuario_tem_nivel(self.request.user, PAPEIS_CRM_ESCRITA)
+        context["interacoes_relacionadas"] = interacoes
+        context["tarefas_relacionadas"] = tarefas
+        context["now"] = agora
+        context["resumo_relacionamento"] = {
+            "interacoes": self.object.interacoes.count(),
+            "tarefas_abertas": self.object.tarefas.filter(concluida=False).count(),
+            "tarefas_atrasadas": self.object.tarefas.filter(concluida=False, prazo__lt=agora).count(),
+        }
         return context
 
 
@@ -238,3 +264,115 @@ class ContatoCRMUpdateView(LoginRequiredMixin, NivelAcessoMixin, FiltroCampanhaM
         kwargs = super().get_form_kwargs()
         kwargs["usuario"] = self.request.user
         return kwargs
+
+
+class InteracaoContatoCreateView(LoginRequiredMixin, NivelAcessoMixin, ContatoCRMProtegidoMixin, MensagemSucessoMixin, CreateView):
+    model = InteracaoContato
+    form_class = InteracaoContatoFormulario
+    template_name = "eleitores/interacao_formulario.html"
+    niveis_permitidos = PAPEIS_CRM_ESCRITA
+    mensagem_sucesso = "Interacao registrada com sucesso."
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["usuario"] = self.request.user
+        return kwargs
+
+    def get_success_url(self):
+        return reverse("eleitores:detalhe", args=[self.get_contato().pk])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["contato_relacionado"] = self.get_contato()
+        return context
+
+    def form_valid(self, form):
+        contato = self.get_contato()
+        form.instance.contato = contato
+        form.instance.campanha = contato.campanha
+        if not form.instance.responsavel_id:
+            form.instance.responsavel = self.request.user
+        return super().form_valid(form)
+
+
+class InteracaoContatoUpdateView(
+    LoginRequiredMixin,
+    NivelAcessoMixin,
+    InteracaoContatoQuerysetMixin,
+    MensagemSucessoMixin,
+    UpdateView,
+):
+    model = InteracaoContato
+    form_class = InteracaoContatoFormulario
+    template_name = "eleitores/interacao_formulario.html"
+    niveis_permitidos = PAPEIS_CRM_ESCRITA
+    mensagem_sucesso = "Interacao atualizada com sucesso."
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["usuario"] = self.request.user
+        return kwargs
+
+    def get_success_url(self):
+        return reverse("eleitores:detalhe", args=[self.object.contato_id])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["contato_relacionado"] = self.object.contato
+        return context
+
+
+class TarefaContatoCreateView(LoginRequiredMixin, NivelAcessoMixin, ContatoCRMProtegidoMixin, MensagemSucessoMixin, CreateView):
+    model = TarefaContato
+    form_class = TarefaContatoFormulario
+    template_name = "eleitores/tarefa_formulario.html"
+    niveis_permitidos = PAPEIS_CRM_ESCRITA
+    mensagem_sucesso = "Tarefa de retorno cadastrada com sucesso."
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["usuario"] = self.request.user
+        return kwargs
+
+    def get_success_url(self):
+        return reverse("eleitores:detalhe", args=[self.get_contato().pk])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["contato_relacionado"] = self.get_contato()
+        return context
+
+    def form_valid(self, form):
+        contato = self.get_contato()
+        form.instance.contato = contato
+        form.instance.campanha = contato.campanha
+        if not form.instance.responsavel_id:
+            form.instance.responsavel = self.request.user
+        return super().form_valid(form)
+
+
+class TarefaContatoUpdateView(
+    LoginRequiredMixin,
+    NivelAcessoMixin,
+    TarefaContatoQuerysetMixin,
+    MensagemSucessoMixin,
+    UpdateView,
+):
+    model = TarefaContato
+    form_class = TarefaContatoFormulario
+    template_name = "eleitores/tarefa_formulario.html"
+    niveis_permitidos = PAPEIS_CRM_ESCRITA
+    mensagem_sucesso = "Tarefa de retorno atualizada com sucesso."
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["usuario"] = self.request.user
+        return kwargs
+
+    def get_success_url(self):
+        return reverse("eleitores:detalhe", args=[self.object.contato_id])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["contato_relacionado"] = self.object.contato
+        return context

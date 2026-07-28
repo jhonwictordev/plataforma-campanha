@@ -6,17 +6,46 @@
         <h2 class="h3 mb-1">{{ contato.nome_completo }}</h2>
         <p class="text-secondary mb-0">{{ contato.cidade }}{% if contato.bairro %} | {{ contato.bairro }}{% endif %}</p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-outline-secondary" href="{% url 'eleitores:home' %}">Voltar</a>
         {% if pode_editar %}
+            <a class="btn btn-outline-primary" href="{% url 'eleitores:interacao_nova' contato.pk %}">
+                <i class="bi bi-chat-left-text"></i>
+                Nova interacao
+            </a>
+            <a class="btn btn-outline-primary" href="{% url 'eleitores:tarefa_nova' contato.pk %}">
+                <i class="bi bi-check2-square"></i>
+                Nova tarefa
+            </a>
             <a class="btn btn-primary" href="{% url 'eleitores:editar' contato.pk %}">Editar</a>
         {% endif %}
     </div>
 </div>
 
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="metric-card h-100">
+            <span>Interacoes registradas</span>
+            <strong>{{ resumo_relacionamento.interacoes }}</strong>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card h-100">
+            <span>Tarefas abertas</span>
+            <strong>{{ resumo_relacionamento.tarefas_abertas }}</strong>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card h-100">
+            <span>Tarefas atrasadas</span>
+            <strong>{{ resumo_relacionamento.tarefas_atrasadas }}</strong>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-lg-7">
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <h3 class="h5 mb-3">Dados principais</h3>
                 <div class="row g-3">
@@ -30,9 +59,40 @@
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-lg-5">
+
         <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                    <h3 class="h5 mb-0">Historico de interacoes</h3>
+                    {% if pode_editar %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'eleitores:interacao_nova' contato.pk %}">Registrar</a>
+                    {% endif %}
+                </div>
+                <div class="d-grid gap-3">
+                    {% for interacao in interacoes_relacionadas %}
+                        <div class="border rounded-3 p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                <div>
+                                    <strong class="d-block">{{ interacao.tipo }}</strong>
+                                    <span class="small text-secondary">{{ interacao.data_hora|date:"d/m/Y H:i" }}</span>
+                                </div>
+                                {% if pode_editar %}
+                                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'eleitores:interacao_editar' interacao.pk %}">Editar</a>
+                                {% endif %}
+                            </div>
+                            <div class="mt-2">{{ interacao.descricao }}</div>
+                            <div class="small text-secondary mt-2">Responsavel: {{ interacao.responsavel|default:"-" }}</div>
+                        </div>
+                    {% empty %}
+                        <div class="text-secondary">Nenhuma interacao registrada para este contato.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <h3 class="h5 mb-3">Governanca e consentimento</h3>
                 <ul class="list-unstyled mb-0 d-grid gap-2">
@@ -42,6 +102,40 @@
                     <li><strong>Possivel duplicado:</strong> {% if contato.possivel_duplicado %}Sim{% else %}Nao{% endif %}</li>
                     <li><strong>Responsavel:</strong> {{ contato.responsavel_cadastro|default:"-" }}</li>
                     <li><strong>Lideranca relacionada:</strong> {{ contato.lideranca_relacionada|default:"-" }}</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                    <h3 class="h5 mb-0">Tarefas de retorno</h3>
+                    {% if pode_editar %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'eleitores:tarefa_nova' contato.pk %}">Adicionar</a>
+                    {% endif %}
+                </div>
+                <ul class="list-unstyled mb-0 d-grid gap-3">
+                    {% for tarefa in tarefas_relacionadas %}
+                        <li class="border rounded-3 p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                <div>
+                                    <strong class="d-block">{{ tarefa.titulo }}</strong>
+                                    <span class="small text-secondary">
+                                        {% if tarefa.prazo %}Prazo: {{ tarefa.prazo|date:"d/m/Y H:i" }}{% else %}Sem prazo definido{% endif %}
+                                    </span>
+                                </div>
+                                <span class="badge {% if tarefa.concluida %}text-bg-success{% elif tarefa.prazo and tarefa.prazo < now %}text-bg-danger{% else %}text-bg-light border{% endif %}">
+                                    {% if tarefa.concluida %}Concluida{% elif tarefa.prazo and tarefa.prazo < now %}Atrasada{% else %}Aberta{% endif %}
+                                </span>
+                            </div>
+                            <div class="small text-secondary mt-2">Responsavel: {{ tarefa.responsavel|default:"-" }}</div>
+                            {% if pode_editar %}
+                                <a class="btn btn-sm btn-outline-secondary mt-3" href="{% url 'eleitores:tarefa_editar' tarefa.pk %}">Editar tarefa</a>
+                            {% endif %}
+                        </li>
+                    {% empty %}
+                        <li class="text-secondary">Nenhuma tarefa de retorno vinculada a este contato.</li>
+                    {% endfor %}
                 </ul>
             </div>
         </div>

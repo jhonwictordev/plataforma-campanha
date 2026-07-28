@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from core.forms import FormularioBootstrapMixin, normalizar_tags
 
-from .models import ContatoCRM
+from .models import ContatoCRM, InteracaoContato, TarefaContato
 
 
 class ContatoCRMFormulario(FormularioBootstrapMixin):
@@ -127,3 +127,58 @@ class ExportacaoContatoCRMFormulario(FormularioSimplesBootstrapMixin):
             ("xlsx", "Excel"),
         ),
     )
+
+
+class InteracaoContatoFormulario(FormularioBootstrapMixin):
+    class Meta:
+        model = InteracaoContato
+        fields = ["tipo", "data_hora", "descricao", "responsavel"]
+        widgets = {
+            "data_hora": forms.DateTimeInput(attrs={"type": "datetime-local"}),
+            "descricao": forms.Textarea(attrs={"rows": 4}),
+        }
+
+    def __init__(self, *args, usuario=None, **kwargs):
+        self.usuario_logado = usuario
+        super().__init__(*args, **kwargs)
+        if usuario and getattr(usuario, "campanha_id", None) and not (usuario.is_superuser or usuario.is_staff):
+            self.fields["responsavel"].queryset = self.fields["responsavel"].queryset.filter(
+                campanha_id=usuario.campanha_id
+            )
+            if not self.instance.pk:
+                self.fields["responsavel"].initial = usuario.pk
+
+    def clean(self):
+        dados = super().clean()
+        responsavel = dados.get("responsavel")
+        campanha_id = getattr(self.usuario_logado, "campanha_id", None)
+        if campanha_id and responsavel and responsavel.campanha_id != campanha_id:
+            self.add_error("responsavel", "O responsavel precisa pertencer a mesma campanha.")
+        return dados
+
+
+class TarefaContatoFormulario(FormularioBootstrapMixin):
+    class Meta:
+        model = TarefaContato
+        fields = ["titulo", "prazo", "concluida", "responsavel"]
+        widgets = {
+            "prazo": forms.DateTimeInput(attrs={"type": "datetime-local"}),
+        }
+
+    def __init__(self, *args, usuario=None, **kwargs):
+        self.usuario_logado = usuario
+        super().__init__(*args, **kwargs)
+        if usuario and getattr(usuario, "campanha_id", None) and not (usuario.is_superuser or usuario.is_staff):
+            self.fields["responsavel"].queryset = self.fields["responsavel"].queryset.filter(
+                campanha_id=usuario.campanha_id
+            )
+            if not self.instance.pk:
+                self.fields["responsavel"].initial = usuario.pk
+
+    def clean(self):
+        dados = super().clean()
+        responsavel = dados.get("responsavel")
+        campanha_id = getattr(self.usuario_logado, "campanha_id", None)
+        if campanha_id and responsavel and responsavel.campanha_id != campanha_id:
+            self.add_error("responsavel", "O responsavel precisa pertencer a mesma campanha.")
+        return dados

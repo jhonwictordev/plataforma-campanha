@@ -17,7 +17,7 @@ from comunicacao.api_views import (
     NotificacaoInternaViewSet,
     WebhookComunicacaoAPIView,
 )
-from eleitores.api_views import ContatoCRMViewSet
+from eleitores.api_views import ContatoCRMViewSet, InteracaoContatoViewSet, TarefaContatoViewSet
 from equipe.api_views import IntegranteEquipeViewSet, TarefaEquipeViewSet
 from financeiro.api_views import (
     CategoriaFinanceiraViewSet,
@@ -43,6 +43,8 @@ api_router.register("financeiro-centros-custo", CentroCustoViewSet, basename="ap
 api_router.register("financeiro-lancamentos", LancamentoFinanceiroViewSet, basename="api-financeiro-lancamentos")
 api_router.register("financeiro-parceiros", ParceiroFinanceiroViewSet, basename="api-financeiro-parceiros")
 api_router.register("contatos", ContatoCRMViewSet, basename="api-contatos")
+api_router.register("contato-interacoes", InteracaoContatoViewSet, basename="api-contato-interacoes")
+api_router.register("contato-tarefas", TarefaContatoViewSet, basename="api-contato-tarefas")
 api_router.register("equipe-integrantes", IntegranteEquipeViewSet, basename="api-equipe-integrantes")
 api_router.register("equipe-tarefas", TarefaEquipeViewSet, basename="api-equipe-tarefas")
 api_router.register("liderancas", LiderancaViewSet, basename="api-liderancas")

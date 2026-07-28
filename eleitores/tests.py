@@ -1,9 +1,11 @@
 import io
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from openpyxl import Workbook
 from rest_framework.test import APIClient
 
@@ -11,7 +13,7 @@ from auditoria.models import LogSeguranca
 from campanhas.models import Campanha
 from liderancas.models import Lideranca
 
-from .models import ContatoCRM
+from .models import ContatoCRM, InteracaoContato, TarefaContato
 
 Usuario = get_user_model()
 
@@ -99,6 +101,38 @@ class ContatoCRMPermissoesTestCase(TestCase):
             consentimento_comunicacao=True,
             canal_autorizado="email",
         )
+        self.interacao_a = InteracaoContato.objects.create(
+            campanha=self.campanha_a,
+            contato=self.contato_a,
+            tipo="ligacao",
+            data_hora=timezone.now(),
+            descricao="Primeiro contato telefonico",
+            responsavel=self.usuario_a,
+        )
+        self.tarefa_a = TarefaContato.objects.create(
+            campanha=self.campanha_a,
+            contato=self.contato_a,
+            titulo="Retornar na sexta",
+            prazo=timezone.now() + timedelta(days=2),
+            concluida=False,
+            responsavel=self.usuario_a,
+        )
+        self.interacao_b = InteracaoContato.objects.create(
+            campanha=self.campanha_b,
+            contato=self.contato_b,
+            tipo="mensagem",
+            data_hora=timezone.now(),
+            descricao="Contato da outra campanha",
+            responsavel=self.usuario_b,
+        )
+        self.tarefa_b = TarefaContato.objects.create(
+            campanha=self.campanha_b,
+            contato=self.contato_b,
+            titulo="Retorno B",
+            prazo=timezone.now() + timedelta(days=1),
+            concluida=False,
+            responsavel=self.usuario_b,
+        )
 
     def _arquivo_csv(self, conteudo: str, nome: str = "contatos.csv"):
         return SimpleUploadedFile(nome, conteudo.encode("utf-8"), content_type="text/csv")
@@ -127,6 +161,13 @@ class ContatoCRMPermissoesTestCase(TestCase):
         resposta = self.client.get(reverse("eleitores:detalhe", args=[self.contato_b.pk]))
         self.assertEqual(resposta.status_code, 404)
 
+    def test_detalhe_web_exibe_interacoes_e_tarefas_do_contato(self):
+        self.client.force_login(self.usuario_a)
+        resposta = self.client.get(reverse("eleitores:detalhe", args=[self.contato_a.pk]))
+        self.assertContains(resposta, "Primeiro contato telefonico")
+        self.assertContains(resposta, "Retornar na sexta")
+        self.assertNotContains(resposta, "Contato da outra campanha")
+
     def test_kanban_web_respeita_isolamento_por_campanha(self):
         self.client.force_login(self.usuario_a)
         resposta = self.client.get(reverse("eleitores:kanban"))
@@ -149,6 +190,38 @@ class ContatoCRMPermissoesTestCase(TestCase):
         resposta_exportacao = self.client.get(reverse("eleitores:exportar"), {"formato": "csv"})
         self.assertEqual(resposta_importacao.status_code, 403)
         self.assertEqual(resposta_exportacao.status_code, 403)
+
+    def test_criacao_web_de_interacao_e_tarefa_respeita_contato_da_campanha(self):
+        self.client.force_login(self.usuario_a)
+        resposta_interacao = self.client.post(
+            reverse("eleitores:interacao_nova", args=[self.contato_a.pk]),
+            {
+                "tipo": "visita",
+                "data_hora": "2026-07-29T09:30",
+                "descricao": "Visita registrada pelo CRM",
+                "responsavel": str(self.usuario_a.pk),
+            },
+        )
+        resposta_tarefa = self.client.post(
+            reverse("eleitores:tarefa_nova", args=[self.contato_a.pk]),
+            {
+                "titulo": "Enviar material",
+                "prazo": "2026-07-30T10:00",
+                "concluida": "",
+                "responsavel": str(self.usuario_a.pk),
+            },
+        )
+        self.assertEqual(resposta_interacao.status_code, 302)
+        self.assertEqual(resposta_tarefa.status_code, 302)
+        self.assertTrue(InteracaoContato.objects.filter(contato=self.contato_a, descricao__icontains="CRM").exists())
+        self.assertTrue(TarefaContato.objects.filter(contato=self.contato_a, titulo="Enviar material").exists())
+
+    def test_criacao_web_de_relacionamento_bloqueia_contato_de_outra_campanha(self):
+        self.client.force_login(self.usuario_a)
+        resposta_interacao = self.client.get(reverse("eleitores:interacao_nova", args=[self.contato_b.pk]))
+        resposta_tarefa = self.client.get(reverse("eleitores:tarefa_nova", args=[self.contato_b.pk]))
+        self.assertEqual(resposta_interacao.status_code, 404)
+        self.assertEqual(resposta_tarefa.status_code, 404)
 
     def test_importacao_csv_cria_contato_e_registra_log(self):
         arquivo = self._arquivo_csv(
@@ -221,6 +294,56 @@ class ContatoCRMPermissoesTestCase(TestCase):
         resultados = resposta.json()["results"]
         self.assertEqual(len(resultados), 1)
         self.assertEqual(resultados[0]["nome_completo"], "Contato A")
+
+    def test_api_lista_interacoes_isola_por_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_a)
+        resposta = client.get("/api/v1/contato-interacoes/")
+        self.assertEqual(resposta.status_code, 200)
+        resultados = resposta.json()["results"]
+        self.assertEqual(len(resultados), 1)
+        self.assertEqual(resultados[0]["descricao"], "Primeiro contato telefonico")
+
+    def test_api_lista_tarefas_isola_por_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_a)
+        resposta = client.get("/api/v1/contato-tarefas/")
+        self.assertEqual(resposta.status_code, 200)
+        resultados = resposta.json()["results"]
+        self.assertEqual(len(resultados), 1)
+        self.assertEqual(resultados[0]["titulo"], "Retornar na sexta")
+
+    def test_api_nao_permite_registrar_interacao_para_contato_de_outra_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_a)
+        resposta = client.post(
+            "/api/v1/contato-interacoes/",
+            {
+                "contato": str(self.contato_b.pk),
+                "tipo": "mensagem",
+                "data_hora": "2026-07-29T11:00:00Z",
+                "descricao": "Tentativa indevida",
+                "responsavel": str(self.usuario_a.pk),
+            },
+            format="json",
+        )
+        self.assertEqual(resposta.status_code, 400)
+
+    def test_api_nao_permite_registrar_tarefa_para_contato_de_outra_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_a)
+        resposta = client.post(
+            "/api/v1/contato-tarefas/",
+            {
+                "contato": str(self.contato_b.pk),
+                "titulo": "Agendar retorno indevido",
+                "prazo": "2026-07-30T12:00:00Z",
+                "concluida": False,
+                "responsavel": str(self.usuario_a.pk),
+            },
+            format="json",
+        )
+        self.assertEqual(resposta.status_code, 400)
 
     def test_api_nao_permite_relacionar_lideranca_de_outra_campanha(self):
         lideranca_b = Lideranca.objects.create(
