@@ -8,6 +8,12 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from rest_framework.routers import DefaultRouter
 
 from agenda.api_views import EventoAgendaViewSet
+from auditoria.api_views import (
+    LogSegurancaViewSet,
+    PoliticaRetencaoDadosViewSet,
+    RegistroAuditoriaViewSet,
+    SolicitacaoTitularDadosViewSet,
+)
 from campanhas.api_views import CampanhaViewSet
 from comunicacao.api_views import (
     CampanhaComunicacaoViewSet,
@@ -32,6 +38,10 @@ from usuarios.views import CancelarLoginDoisFatoresView, LoginDoisFatoresView, L
 
 api_router = DefaultRouter()
 api_router.register("agenda-eventos", EventoAgendaViewSet, basename="api-agenda-eventos")
+api_router.register("auditoria-registros", RegistroAuditoriaViewSet, basename="api-auditoria-registros")
+api_router.register("auditoria-logs", LogSegurancaViewSet, basename="api-auditoria-logs")
+api_router.register("auditoria-politicas", PoliticaRetencaoDadosViewSet, basename="api-auditoria-politicas")
+api_router.register("auditoria-solicitacoes", SolicitacaoTitularDadosViewSet, basename="api-auditoria-solicitacoes")
 api_router.register("campanhas", CampanhaViewSet, basename="api-campanhas")
 api_router.register("comunicacao-modelos", ModeloMensagemViewSet, basename="api-comunicacao-modelos")
 api_router.register("comunicacao-campanhas", CampanhaComunicacaoViewSet, basename="api-comunicacao-campanhas")
