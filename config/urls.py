@@ -22,6 +22,7 @@ from financeiro.api_views import (
     ParceiroFinanceiroViewSet,
 )
 from liderancas.api_views import LiderancaViewSet
+from mapa_eleitoral.api_views import MapaEleitoralViewSet
 from metas.api_views import MetaCampanhaViewSet
 
 api_router = DefaultRouter()
@@ -38,6 +39,7 @@ api_router.register("contatos", ContatoCRMViewSet, basename="api-contatos")
 api_router.register("equipe-integrantes", IntegranteEquipeViewSet, basename="api-equipe-integrantes")
 api_router.register("equipe-tarefas", TarefaEquipeViewSet, basename="api-equipe-tarefas")
 api_router.register("liderancas", LiderancaViewSet, basename="api-liderancas")
+api_router.register("mapa-eleitoral", MapaEleitoralViewSet, basename="api-mapa-eleitoral")
 api_router.register("metas-campanha", MetaCampanhaViewSet, basename="api-metas-campanha")
 
 urlpatterns = [
