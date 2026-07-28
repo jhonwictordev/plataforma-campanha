@@ -89,6 +89,12 @@ Depois de subir as migrations, registre as rotinas padrao no scheduler:
 python manage.py sincronizar_rotinas_celery
 ```
 
+Antes de abrir o ambiente para usuarios reais, rode tambem o preflight de implantacao:
+
+```bash
+python manage.py verificar_implantacao --strict
+```
+
 Na versao atual, a rotina `Plataforma - Comunicacoes agendadas` executa o processamento assíncrono das campanhas vencidas. Se os canais `whatsapp` ou `sms` estiverem sem integracao oficial configurada, a campanha sera pausada com trilha de erro e notificacao interna.
 
 Para uma verificacao manual ou homologacao controlada, voce tambem pode forcar o processamento pelo shell:
@@ -121,6 +127,7 @@ Para reconciliar retorno oficial de status, configure os endpoints abaixo no pro
 - Politicas de retencao revisadas com apoio juridico e contabil
 - Endpoint `/saude/prontidao/` configurado como health check do provedor
 - `OTP_TOTP_ISSUER` revisado se a autenticacao em dois fatores estiver habilitada
+- `python manage.py verificar_implantacao --strict` sem erros nem avisos
 
 ## 7. Backup operacional
 
@@ -157,3 +164,4 @@ O repositorio inclui um `render.yaml` pronto para Blueprint com:
 
 Antes da primeira sincronizacao, revise os planos e preencha manualmente as variaveis marcadas com `sync: false`.
 Use a mesma `SECRET_KEY`, os mesmos `ALLOWED_HOSTS` e as mesmas `CSRF_TRUSTED_ORIGINS` nos tres servicos Django/Celery do blueprint.
+O blueprint usa scripts versionados em `scripts/` para build, predeploy e start, reduzindo divergencia entre ambiente local, Docker e Render.

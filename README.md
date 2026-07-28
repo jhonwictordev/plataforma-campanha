@@ -129,6 +129,18 @@ Sincronizar as rotinas periodicas do `django-celery-beat`:
 python manage.py sincronizar_rotinas_celery
 ```
 
+Executar um preflight de implantacao para validar seguranca, Redis, staticfiles, migrations e scheduler:
+
+```bash
+python manage.py verificar_implantacao
+```
+
+Em modo estrito, o comando tambem falha se restarem avisos operacionais:
+
+```bash
+python manage.py verificar_implantacao --strict
+```
+
 Processar comunicacoes agendadas imediatamente, sem esperar o proximo ciclo do `beat`:
 
 ```bash
@@ -218,8 +230,10 @@ O repositorio tambem inclui:
 
 - `render.yaml` para blueprint de deploy com web, Redis, worker, beat e PostgreSQL
 - `.github/workflows/ci.yml` para checks e testes automaticos no GitHub
+- `scripts/build.sh`, `scripts/predeploy.sh`, `scripts/start-web.sh`, `scripts/start-worker.sh` e `scripts/start-beat.sh` para padronizar build, release e inicializacao
 
 No fluxo do Render, preencha a mesma `SECRET_KEY`, os mesmos `ALLOWED_HOSTS` e as mesmas `CSRF_TRUSTED_ORIGINS` para web, worker e beat.
+O predeploy padrao agora executa `python manage.py verificar_implantacao --strict`, entao o ambiente so deve seguir quando migrations, staticfiles, Redis e tarefas periodicas estiverem consistentes.
 
 Resumo rapido:
 

@@ -9,7 +9,7 @@ from unittest.mock import patch
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
 from django.utils import timezone
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django_celery_beat.models import PeriodicTask
 
 from agenda.models import EventoAgenda
@@ -18,6 +18,7 @@ from campanhas.models import Campanha
 from comunicacao.models import CampanhaComunicacao, NotificacaoInterna
 from config.settings.base import obter_configuracao_banco
 from core.health import obter_estado_prontidao
+from core.production_checks import avaliar_implantacao
 from core.tasks import (
     gerar_alertas_financeiros,
     gerar_alertas_lgpd,
@@ -204,6 +205,103 @@ class ComandosOperacionaisTestCase(TestCase):
             PeriodicTask.objects.get(name="Plataforma - Comunicacoes agendadas").task,
             "comunicacao.tasks.processar_campanhas_agendadas_task",
         )
+
+
+class PreflightImplantacaoTestCase(TestCase):
+    def executar_comando(self, nome, **kwargs):
+        saida = StringIO()
+        call_command(nome, stdout=saida, **kwargs)
+        return saida.getvalue()
+
+    @override_settings(
+        DEBUG=False,
+        ALLOWED_HOSTS=["app.plataformacampanha.com"],
+        CSRF_TRUSTED_ORIGINS=["https://app.plataformacampanha.com"],
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        DEFAULT_FROM_EMAIL="nao-responda@app.plataformacampanha.com",
+    )
+    @patch("core.production_checks.verificar_banco_dados", return_value={"status": "ok", "detalhe": "Banco ok"})
+    @patch("core.production_checks.verificar_migracoes", return_value={"status": "ok", "detalhe": "Migracoes ok"})
+    @patch("core.production_checks.verificar_redis", return_value={"status": "ok", "detalhe": "Redis ok"})
+    def test_avaliar_implantacao_retorna_ok_com_ambiente_preparado(
+        self,
+        mocked_redis,
+        mocked_migracoes,
+        mocked_banco,
+    ):
+        call_command("sincronizar_rotinas_celery")
+        with tempfile.TemporaryDirectory() as diretorio_temporario:
+            static_root = Path(diretorio_temporario)
+            (static_root / "app.css").write_text("body { color: #000; }", encoding="utf-8")
+            with patch.dict(
+                os.environ,
+                {
+                    "DJANGO_SETTINGS_MODULE": "config.settings.production",
+                    "SECRET_KEY": "segredo-super-forte-para-implantacao-2026",
+                    "REDIS_URL": "redis://redis-interno:6379/0",
+                    "EMAIL_OFFICIAL_WEBHOOK_TOKEN": "token-email-2026",
+                    "WHATSAPP_OFFICIAL_API_URL": "",
+                    "WHATSAPP_OFFICIAL_API_TOKEN": "",
+                    "WHATSAPP_OFFICIAL_WEBHOOK_TOKEN": "",
+                    "SMS_OFFICIAL_API_URL": "",
+                    "SMS_OFFICIAL_API_TOKEN": "",
+                    "SMS_OFFICIAL_WEBHOOK_TOKEN": "",
+                },
+                clear=False,
+            ):
+                with override_settings(STATIC_ROOT=static_root):
+                    payload = avaliar_implantacao()
+
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["resumo"]["erros"], 0)
+        self.assertEqual(payload["resumo"]["avisos"], 0)
+        mocked_banco.assert_called_once()
+        mocked_migracoes.assert_called_once()
+        mocked_redis.assert_called_once_with(forcar=True)
+
+    @override_settings(
+        DEBUG=False,
+        ALLOWED_HOSTS=["app.plataformacampanha.com"],
+        CSRF_TRUSTED_ORIGINS=["https://app.plataformacampanha.com"],
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        DEFAULT_FROM_EMAIL="nao-responda@plataformacampanha.local",
+    )
+    @patch("core.production_checks.verificar_banco_dados", return_value={"status": "ok", "detalhe": "Banco ok"})
+    @patch("core.production_checks.verificar_migracoes", return_value={"status": "ok", "detalhe": "Migracoes ok"})
+    @patch("core.production_checks.verificar_redis", return_value={"status": "ok", "detalhe": "Redis ok"})
+    def test_verificar_implantacao_strict_falha_quando_ha_aviso(
+        self,
+        mocked_redis,
+        mocked_migracoes,
+        mocked_banco,
+    ):
+        call_command("sincronizar_rotinas_celery")
+        with tempfile.TemporaryDirectory() as diretorio_temporario:
+            static_root = Path(diretorio_temporario)
+            (static_root / "app.css").write_text("body { color: #111; }", encoding="utf-8")
+            with patch.dict(
+                os.environ,
+                {
+                    "DJANGO_SETTINGS_MODULE": "config.settings.production",
+                    "SECRET_KEY": "segredo-super-forte-para-implantacao-2026",
+                    "REDIS_URL": "redis://redis-interno:6379/0",
+                    "EMAIL_OFFICIAL_WEBHOOK_TOKEN": "",
+                    "WHATSAPP_OFFICIAL_API_URL": "",
+                    "WHATSAPP_OFFICIAL_API_TOKEN": "",
+                    "WHATSAPP_OFFICIAL_WEBHOOK_TOKEN": "",
+                    "SMS_OFFICIAL_API_URL": "",
+                    "SMS_OFFICIAL_API_TOKEN": "",
+                    "SMS_OFFICIAL_WEBHOOK_TOKEN": "",
+                },
+                clear=False,
+            ):
+                with override_settings(STATIC_ROOT=static_root):
+                    with self.assertRaises(CommandError):
+                        self.executar_comando("verificar_implantacao", strict=True)
+
+        mocked_banco.assert_called_once()
+        mocked_migracoes.assert_called_once()
+        mocked_redis.assert_called_once_with(forcar=True)
 
 
 class RotinasCeleryNotificacoesTestCase(TestCase):

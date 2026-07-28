@@ -37,12 +37,14 @@ def verificar_migracoes() -> dict:
     return {"status": "ok", "detalhe": "Todas as migrations foram aplicadas."}
 
 
-def verificar_redis() -> dict:
-    if not _obter_booleano_ambiente("HEALTHCHECK_VERIFY_REDIS", False):
+def verificar_redis(forcar: bool = False) -> dict:
+    if not forcar and not _obter_booleano_ambiente("HEALTHCHECK_VERIFY_REDIS", False):
         return {"status": "ignorado", "detalhe": "Verificacao opcional de Redis desabilitada."}
 
     redis_url = (os.getenv("REDIS_URL") or os.getenv("CELERY_BROKER_URL") or "").strip()
     if not redis_url:
+        if forcar:
+            return {"status": "erro", "detalhe": "Redis/Celery nao configurado neste ambiente."}
         return {"status": "ignorado", "detalhe": "Redis nao configurado neste ambiente."}
 
     cliente = None

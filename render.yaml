@@ -13,9 +13,9 @@ services:
     runtime: python
     plan: starter
     autoDeployTrigger: checksPass
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    preDeployCommand: python manage.py migrate && python manage.py sincronizar_rotinas_celery
-    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    buildCommand: sh scripts/build.sh
+    preDeployCommand: sh scripts/predeploy.sh
+    startCommand: sh scripts/start-web.sh
     healthCheckPath: /saude/prontidao/
     envVars:
       - key: PYTHON_VERSION
@@ -45,6 +45,16 @@ services:
           type: keyvalue
           name: plataforma-campanha-redis
           property: connectionString
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: GUNICORN_TIMEOUT
+        value: "120"
+      - key: GUNICORN_GRACEFUL_TIMEOUT
+        value: "30"
+      - key: HEALTHCHECK_VERIFY_REDIS
+        value: "True"
+      - key: EMAIL_BACKEND
+        sync: false
       - key: ALLOWED_HOSTS
         sync: false
       - key: CSRF_TRUSTED_ORIGINS
@@ -71,8 +81,8 @@ services:
     runtime: python
     plan: starter
     autoDeployTrigger: checksPass
-    buildCommand: pip install -r requirements.txt
-    startCommand: celery -A config worker -l info
+    buildCommand: sh scripts/build.sh
+    startCommand: sh scripts/start-worker.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.4
@@ -101,6 +111,12 @@ services:
           type: keyvalue
           name: plataforma-campanha-redis
           property: connectionString
+      - key: CELERY_LOG_LEVEL
+        value: info
+      - key: HEALTHCHECK_VERIFY_REDIS
+        value: "True"
+      - key: EMAIL_BACKEND
+        sync: false
       - key: ALLOWED_HOSTS
         sync: false
       - key: CSRF_TRUSTED_ORIGINS
@@ -127,8 +143,8 @@ services:
     runtime: python
     plan: starter
     autoDeployTrigger: checksPass
-    buildCommand: pip install -r requirements.txt
-    startCommand: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    buildCommand: sh scripts/build.sh
+    startCommand: sh scripts/start-beat.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.4
@@ -157,6 +173,12 @@ services:
           type: keyvalue
           name: plataforma-campanha-redis
           property: connectionString
+      - key: CELERY_LOG_LEVEL
+        value: info
+      - key: HEALTHCHECK_VERIFY_REDIS
+        value: "True"
+      - key: EMAIL_BACKEND
+        sync: false
       - key: ALLOWED_HOSTS
         sync: false
       - key: CSRF_TRUSTED_ORIGINS
