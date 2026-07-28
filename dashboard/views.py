@@ -4,7 +4,7 @@ from django.views.generic import TemplateView
 from agenda.models import EventoAgenda
 from auditoria.models import RegistroAuditoria
 from campanhas.models import Campanha
-from comunicacao.models import EnvioComunicacao
+from comunicacao.models import CampanhaComunicacao, EnvioComunicacao, NotificacaoInterna
 from core.mixins import NivelAcessoMixin
 from core.permissions import PAPEIS_TODOS_MODULOS, filtrar_queryset_por_usuario
 from eleitores.models import ContatoCRM
@@ -14,7 +14,10 @@ from liderancas.models import Lideranca
 from metas.models import MetaCampanha
 
 from .services import (
+    alertas_por_categoria,
+    comunicacoes_programadas,
     comunicacao_resumo_periodo,
+    contas_vencidas,
     contatos_por_bairro,
     contatos_por_cidade,
     distribuicao_status_contatos,
@@ -23,7 +26,9 @@ from .services import (
     liderancas_por_regiao,
     mapa_cadastros_autorizados,
     metas_por_equipe,
+    notificacoes_recentes,
     proximos_compromissos,
+    resumo_operacional,
     resolver_periodo,
     resumo_financeiro_periodo,
     serie_evolucao_cadastros,
@@ -89,10 +94,26 @@ class DashboardHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
                     "responsavel_registro",
                 )
             ),
+            "comunicacoes": self._filtrar_queryset(
+                CampanhaComunicacao.objects.select_related("campanha", "modelo_mensagem", "responsavel")
+            ),
             "auditoria": self._filtrar_queryset(
                 RegistroAuditoria.objects.select_related("campanha", "usuario")
             ),
+            "notificacoes": self._notificacoes_usuario(),
         }
+
+    def _notificacoes_usuario(self):
+        queryset = NotificacaoInterna.objects.filter(usuario_destinatario=self.request.user).select_related(
+            "campanha",
+            "usuario_destinatario",
+        )
+        campanha_id = self._campanha_selecionada_id()
+        if campanha_id:
+            return queryset.filter(campanha_id=campanha_id)
+        if not self._usuario_admin() and getattr(self.request.user, "campanha_id", None):
+            return queryset.filter(campanha_id=self.request.user.campanha_id)
+        return queryset
 
     def _aplicar_filtros_territoriais(self, dados):
         cidade = self.request.GET.get("cidade", "").strip()
@@ -137,12 +158,15 @@ class DashboardHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
         eventos = dados["eventos"]
         financeiro = dados["financeiro"]
         envios = dados["envios"]
+        comunicacoes = dados["comunicacoes"]
         auditoria = dados["auditoria"]
+        notificacoes = dados["notificacoes"]
 
         financeiro_resumo = resumo_financeiro_periodo(financeiro, data_inicial, data_final)
         proximos_eventos = proximos_compromissos(eventos)
         tarefas_criticas = tarefas_atrasadas(tarefas)
         comunicacao_resumo = comunicacao_resumo_periodo(envios, data_inicial, data_final)
+        resumo_operacao = resumo_operacional(notificacoes, comunicacoes, tarefas, eventos, financeiro, envios)
         novos_cadastros = (
             contatos.filter(criado_em__date__range=(data_inicial, data_final)).count()
             + liderancas.filter(criado_em__date__range=(data_inicial, data_final)).count()
@@ -175,11 +199,18 @@ class DashboardHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
             "compromissos_proximos": proximos_eventos.count(),
             "tarefas_atrasadas": tarefas_criticas.count(),
             "saldo_financeiro": financeiro_resumo["saldo"],
+            "alertas_nao_lidos": resumo_operacao["alertas_nao_lidos"],
+            "comunicacoes_agendadas": resumo_operacao["comunicacoes_agendadas"],
+            "contas_vencidas": resumo_operacao["contas_vencidas"],
         }
         context["financeiro_resumo"] = financeiro_resumo
         context["comunicacao_resumo"] = comunicacao_resumo
+        context["resumo_operacional"] = resumo_operacao
         context["proximos_compromissos"] = proximos_eventos
         context["tarefas_criticas"] = tarefas_criticas
+        context["notificacoes_dashboard"] = notificacoes_recentes(notificacoes)
+        context["comunicacoes_programadas"] = comunicacoes_programadas(comunicacoes)
+        context["contas_vencidas_lista"] = contas_vencidas(financeiro)
         context["atividades_recentes"] = auditoria.order_by("-criado_em", "pk")[:8]
         context["grafico_evolucao"] = serie_evolucao_cadastros(contatos, liderancas, data_inicial, data_final)
         context["grafico_status"] = distribuicao_status_contatos(contatos)
@@ -188,6 +219,7 @@ class DashboardHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
         context["grafico_liderancas_regiao"] = liderancas_por_regiao(liderancas)
         context["grafico_metas_equipe"] = metas_por_equipe(metas)
         context["grafico_financeiro"] = evolucao_financeira(financeiro, data_inicial, data_final)
+        context["grafico_alertas_categoria"] = alertas_por_categoria(notificacoes)
         context["mapa_cadastros"] = mapa_cadastros_autorizados(contatos)
         context["data_referencia"] = "28 de julho de 2026"
         return context

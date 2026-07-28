@@ -9,6 +9,7 @@ from django.utils import timezone
 from agenda.models import EventoAgenda
 from auditoria.models import RegistroAuditoria
 from campanhas.models import Campanha
+from comunicacao.models import CampanhaComunicacao, CanalComunicacao, NotificacaoInterna
 from eleitores.models import ContatoCRM
 from equipe.models import IntegranteEquipe, TarefaEquipe
 from financeiro.models import LancamentoFinanceiro
@@ -55,6 +56,13 @@ class DashboardHomeViewTestCase(TestCase):
             password="senha123",
             nome_completo="Dashboard B",
             campanha=self.campanha_b,
+            nivel_acesso="mobilizador",
+        )
+        self.usuario_a_aux = Usuario.objects.create_user(
+            email="dashboard-a-aux@example.com",
+            password="senha123",
+            nome_completo="Dashboard A Aux",
+            campanha=self.campanha_a,
             nivel_acesso="mobilizador",
         )
         self.usuario_staff = Usuario.objects.create_user(
@@ -208,6 +216,87 @@ class DashboardHomeViewTestCase(TestCase):
             data_vencimento="2026-07-21",
             status=LancamentoFinanceiro.Status.LIQUIDADO,
         )
+        self.conta_vencida_a = LancamentoFinanceiro.objects.create(
+            campanha=self.campanha_a,
+            descricao="Despesa vencida A",
+            tipo=LancamentoFinanceiro.Tipos.DESPESA,
+            valor_reais=Decimal("120.00"),
+            data_vencimento=timezone.localdate() - timedelta(days=2),
+            status=LancamentoFinanceiro.Status.PENDENTE,
+        )
+        LancamentoFinanceiro.objects.create(
+            campanha=self.campanha_b,
+            descricao="Despesa vencida B",
+            tipo=LancamentoFinanceiro.Tipos.DESPESA,
+            valor_reais=Decimal("220.00"),
+            data_vencimento=timezone.localdate() - timedelta(days=1),
+            status=LancamentoFinanceiro.Status.PENDENTE,
+        )
+
+        self.comunicacao_agendada_a = CampanhaComunicacao.objects.create(
+            campanha=self.campanha_a,
+            nome="Comunicacao A",
+            assunto="Assunto A",
+            conteudo="Conteudo A",
+            canal=CanalComunicacao.WHATSAPP,
+            data_envio=timezone.now() + timedelta(hours=4),
+            responsavel=self.usuario_a,
+            status=CampanhaComunicacao.Status.AGENDADA,
+            quantidade_programada=12,
+        )
+        CampanhaComunicacao.objects.create(
+            campanha=self.campanha_a,
+            nome="Comunicacao atrasada A",
+            assunto="Assunto atraso",
+            conteudo="Conteudo atraso",
+            canal=CanalComunicacao.WHATSAPP,
+            data_envio=timezone.now() - timedelta(hours=2),
+            responsavel=self.usuario_a,
+            status=CampanhaComunicacao.Status.AGENDADA,
+            quantidade_programada=4,
+        )
+        CampanhaComunicacao.objects.create(
+            campanha=self.campanha_b,
+            nome="Comunicacao B",
+            assunto="Assunto B",
+            conteudo="Conteudo B",
+            canal=CanalComunicacao.WHATSAPP,
+            data_envio=timezone.now() + timedelta(hours=6),
+            responsavel=self.usuario_b,
+            status=CampanhaComunicacao.Status.AGENDADA,
+            quantidade_programada=20,
+        )
+
+        self.alerta_usuario_a = NotificacaoInterna.objects.create(
+            campanha=self.campanha_a,
+            usuario_destinatario=self.usuario_a,
+            titulo="Agenda com conflito",
+            mensagem="Ha um compromisso que precisa de remanejamento.",
+            categoria=NotificacaoInterna.Categorias.AGENDA,
+            url_destino=reverse("agenda:home"),
+        )
+        alerta_lido = NotificacaoInterna.objects.create(
+            campanha=self.campanha_a,
+            usuario_destinatario=self.usuario_a,
+            titulo="Financeiro conciliado",
+            mensagem="Um alerta antigo foi resolvido.",
+            categoria=NotificacaoInterna.Categorias.FINANCEIRO,
+        )
+        alerta_lido.marcar_como_lida()
+        NotificacaoInterna.objects.create(
+            campanha=self.campanha_a,
+            usuario_destinatario=self.usuario_a_aux,
+            titulo="Alerta de outro usuario",
+            mensagem="Nao deve aparecer no dashboard do usuario A.",
+            categoria=NotificacaoInterna.Categorias.LGPD,
+        )
+        NotificacaoInterna.objects.create(
+            campanha=self.campanha_b,
+            usuario_destinatario=self.usuario_b,
+            titulo="Equipe em atraso",
+            mensagem="Alerta da campanha B.",
+            categoria=NotificacaoInterna.Categorias.EQUIPE,
+        )
 
         RegistroAuditoria.objects.create(
             campanha=self.campanha_a,
@@ -237,12 +326,21 @@ class DashboardHomeViewTestCase(TestCase):
         self.assertEqual(indicadores["voluntarios"], 1)
         self.assertEqual(indicadores["compromissos_proximos"], 1)
         self.assertEqual(indicadores["tarefas_atrasadas"], 1)
-        self.assertEqual(indicadores["saldo_financeiro"], Decimal("700.00"))
+        self.assertEqual(indicadores["saldo_financeiro"], Decimal("580.00"))
+        self.assertEqual(indicadores["alertas_nao_lidos"], 1)
+        self.assertEqual(indicadores["comunicacoes_agendadas"], 2)
+        self.assertEqual(indicadores["contas_vencidas"], 1)
+        self.assertEqual(resposta.context["resumo_operacional"]["comunicacoes_atrasadas"], 1)
+        self.assertEqual(resposta.context["resumo_operacional"]["taxa_entrega"], 0.0)
 
         rotulos_status = {item["rotulo"] for item in resposta.context["grafico_status"]}
         self.assertIn("Apoiador", rotulos_status)
         self.assertIn("Novo contato", rotulos_status)
         self.assertNotIn("Lideranca", rotulos_status)
+        self.assertEqual(len(resposta.context["notificacoes_dashboard"]), 2)
+        self.assertEqual(len(resposta.context["comunicacoes_programadas"]), 2)
+        self.assertEqual(len(resposta.context["contas_vencidas_lista"]), 1)
+        self.assertEqual(resposta.context["contas_vencidas_lista"][0], self.conta_vencida_a)
 
     def test_dashboard_filtra_por_cidade(self):
         self.client.force_login(self.usuario_a)
@@ -264,4 +362,17 @@ class DashboardHomeViewTestCase(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertEqual(resposta.context["campanha_atual"], self.campanha_a)
         self.assertEqual(resposta.context["indicadores"]["contatos"], 3)
+        self.assertEqual(resposta.context["indicadores"]["comunicacoes_agendadas"], 2)
+        self.assertEqual(resposta.context["indicadores"]["contas_vencidas"], 1)
         self.assertEqual(len(resposta.context["campanhas_disponiveis"]), 2)
+
+    def test_dashboard_alertas_sao_isolados_por_usuario(self):
+        self.client.force_login(self.usuario_a)
+        resposta = self.client.get(reverse("dashboard:home"), {"periodo": "30d"})
+        self.assertEqual(resposta.status_code, 200)
+        titulos = [item.titulo for item in resposta.context["notificacoes_dashboard"]]
+        self.assertIn("Agenda com conflito", titulos)
+        self.assertIn("Financeiro conciliado", titulos)
+        self.assertNotIn("Alerta de outro usuario", titulos)
+        categorias = {item["rotulo"] for item in resposta.context["grafico_alertas_categoria"]}
+        self.assertEqual(categorias, {"Agenda"})

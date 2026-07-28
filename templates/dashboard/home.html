@@ -8,6 +8,7 @@
 {{ grafico_liderancas_regiao|json_script:"grafico-liderancas-regiao-data" }}
 {{ grafico_metas_equipe|json_script:"grafico-metas-equipe-data" }}
 {{ grafico_financeiro|json_script:"grafico-financeiro-data" }}
+{{ grafico_alertas_categoria|json_script:"grafico-alertas-categoria-data" }}
 {{ mapa_cadastros|json_script:"mapa-cadastros-data" }}
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -132,6 +133,24 @@
             <strong>R$ {{ indicadores.saldo_financeiro|floatformat:2 }}</strong>
         </div>
     </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Alertas nao lidos</span>
+            <strong>{{ indicadores.alertas_nao_lidos }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Comunicacoes agendadas</span>
+            <strong>{{ indicadores.comunicacoes_agendadas }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Contas vencidas</span>
+            <strong>{{ indicadores.contas_vencidas }}</strong>
+        </div>
+    </div>
 </div>
 
 <div class="row g-4">
@@ -155,6 +174,88 @@
                 <h3 class="h5 mb-1">Distribuicao por status</h3>
                 <p class="text-secondary small mb-3">Situacao do funil de relacionamento do CRM.</p>
                 <canvas id="graficoStatusContato" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-1">Alertas por categoria</h3>
+                <p class="text-secondary small mb-3">Leitura pessoal das notificacoes operacionais ainda abertas.</p>
+                <canvas id="graficoAlertasCategoria" height="180"></canvas>
+                {% if not grafico_alertas_categoria %}
+                    <div class="small text-secondary mt-3">
+                        Nao ha alertas nao lidos para os filtros atuais.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Pulso operacional</h3>
+                        <p class="text-secondary small mb-0">Sinais imediatos das rotinas, filas e pontos de atencao.</p>
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'comunicacao:notificacoes' %}">
+                        <i class="bi bi-bell"></i>
+                        Abrir alertas
+                    </a>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="finance-card finance-neutral h-100">
+                            <span>Envios hoje</span>
+                            <strong>{{ resumo_operacional.comunicacoes_hoje }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="finance-card finance-negative h-100">
+                            <span>Envios atrasados</span>
+                            <strong>{{ resumo_operacional.comunicacoes_atrasadas }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="finance-card finance-neutral h-100">
+                            <span>Tarefas em fluxo</span>
+                            <strong>{{ resumo_operacional.tarefas_em_fluxo }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="finance-card finance-positive h-100">
+                            <span>Taxa de entrega</span>
+                            <strong>{{ resumo_operacional.taxa_entrega|floatformat:1 }}%</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for notificacao in notificacoes_dashboard %}
+                        <div class="list-group-item px-0 py-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <strong>{{ notificacao.titulo }}</strong>
+                                        <span class="badge text-bg-light border">{{ notificacao.get_categoria_display }}</span>
+                                    </div>
+                                    <div class="small text-secondary mt-1">{{ notificacao.mensagem|truncatechars:110 }}</div>
+                                </div>
+                                <div class="text-end small text-secondary">
+                                    <div>{{ notificacao.criado_em|date:"d/m H:i" }}</div>
+                                    {% if notificacao.url_destino %}
+                                        <a href="{{ notificacao.url_destino }}">Abrir</a>
+                                    {% elif not notificacao.foi_lida %}
+                                        <span class="badge text-bg-warning">Pendente</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="py-4 text-secondary small">Nenhuma notificacao recente para este usuario.</div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
@@ -294,6 +395,73 @@
         </div>
     </div>
 
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Comunicacoes programadas</h3>
+                        <p class="text-secondary small mb-0">Campanhas prontas para disparo ou em execucao.</p>
+                    </div>
+                    <a class="small text-decoration-none" href="{% url 'comunicacao:home' %}">Ir ao modulo</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for item in comunicacoes_programadas %}
+                        <div class="list-group-item px-0 py-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <strong>{{ item.nome }}</strong>
+                                    <div class="small text-secondary">
+                                        {{ item.get_canal_display }} | {{ item.quantidade_programada }} destinatarios
+                                    </div>
+                                </div>
+                                <div class="text-end small text-secondary">
+                                    <div>{{ item.data_envio|date:"d/m/Y H:i" }}</div>
+                                    <span class="badge text-bg-light border">{{ item.get_status_display }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="py-4 text-secondary small">Nenhuma comunicacao pendente de execucao.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Financeiro em risco</h3>
+                        <p class="text-secondary small mb-0">Pendencias vencidas que pedem regularizacao imediata.</p>
+                    </div>
+                    <a class="small text-decoration-none" href="{% url 'financeiro:home' %}">Ir ao modulo</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for item in contas_vencidas_lista %}
+                        <div class="list-group-item px-0 py-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <strong>{{ item.descricao }}</strong>
+                                    <div class="small text-secondary">
+                                        {{ item.get_tipo_display }} | {{ item.data_vencimento|date:"d/m/Y" }}
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <strong>R$ {{ item.valor_reais|floatformat:2 }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="py-4 text-secondary small">Nao ha contas vencidas dentro da campanha filtrada.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
@@ -310,6 +478,10 @@
                         <div class="finance-card finance-negative py-3 px-4">
                             <span>Falhas de comunicacao</span>
                             <strong>{{ comunicacao_resumo.falhas }}</strong>
+                        </div>
+                        <div class="finance-card finance-positive py-3 px-4">
+                            <span>Entrega no periodo</span>
+                            <strong>{{ comunicacao_resumo.taxa_entrega|floatformat:1 }}%</strong>
                         </div>
                     </div>
                 </div>

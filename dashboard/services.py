@@ -6,9 +6,10 @@ from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce, TruncDate, TruncMonth
 from django.utils import timezone
 
-from comunicacao.models import EnvioComunicacao
+from comunicacao.models import CampanhaComunicacao, EnvioComunicacao, NotificacaoInterna
 from eleitores.models import ContatoCRM
 from equipe.models import TarefaEquipe
+from financeiro.models import LancamentoFinanceiro
 
 PERIODOS_DASHBOARD = {
     "7d": 7,
@@ -219,7 +220,108 @@ def mapa_cadastros_autorizados(contatos, limite=80):
 
 def comunicacao_resumo_periodo(envios, data_inicial, data_final):
     queryset = envios.filter(atualizado_em__date__range=(data_inicial, data_final))
+    enviados = queryset.filter(
+        status__in=[
+            EnvioComunicacao.Status.ENVIADO,
+            EnvioComunicacao.Status.ENTREGUE,
+            EnvioComunicacao.Status.RESPONDIDO,
+            EnvioComunicacao.Status.FALHA,
+        ]
+    ).count()
+    entregues = queryset.filter(
+        status__in=[
+            EnvioComunicacao.Status.ENTREGUE,
+            EnvioComunicacao.Status.RESPONDIDO,
+        ]
+    ).count()
     return {
         "respostas": queryset.filter(status=EnvioComunicacao.Status.RESPONDIDO).count(),
         "falhas": queryset.filter(status=EnvioComunicacao.Status.FALHA).count(),
+        "programados": queryset.filter(status=EnvioComunicacao.Status.PROGRAMADO).count(),
+        "enviados": enviados,
+        "entregues": entregues,
+        "taxa_entrega": round((entregues / enviados) * 100, 2) if enviados else 0.0,
+    }
+
+
+def alertas_por_categoria(notificacoes):
+    rotulos = dict(NotificacaoInterna.Categorias.choices)
+    return [
+        {
+            "rotulo": rotulos.get(item["categoria"], item["categoria"]),
+            "total": item["total"],
+        }
+        for item in notificacoes.filter(lida_em__isnull=True)
+        .values("categoria")
+        .annotate(total=Count("id"))
+        .order_by("-total", "categoria")
+    ]
+
+
+def notificacoes_recentes(notificacoes, limite=6):
+    return notificacoes.order_by("-criado_em", "-pk")[:limite]
+
+
+def comunicacoes_programadas(comunicacoes, limite=6):
+    return (
+        comunicacoes.filter(status__in=[CampanhaComunicacao.Status.AGENDADA, CampanhaComunicacao.Status.ENVIANDO])
+        .order_by("data_envio", "pk")[:limite]
+    )
+
+
+def contas_vencidas(financeiro, limite=6):
+    hoje = timezone.localdate()
+    return (
+        financeiro.exclude(
+            status__in=[
+                LancamentoFinanceiro.Status.LIQUIDADO,
+                LancamentoFinanceiro.Status.CANCELADO,
+            ]
+        )
+        .filter(data_vencimento__lt=hoje)
+        .order_by("data_vencimento", "pk")[:limite]
+    )
+
+
+def resumo_operacional(notificacoes, comunicacoes, tarefas, eventos, financeiro, envios):
+    agora = timezone.now()
+    hoje = timezone.localdate()
+    enviados = envios.filter(
+        status__in=[
+            EnvioComunicacao.Status.ENVIADO,
+            EnvioComunicacao.Status.ENTREGUE,
+            EnvioComunicacao.Status.RESPONDIDO,
+            EnvioComunicacao.Status.FALHA,
+        ]
+    ).count()
+    entregues = envios.filter(
+        status__in=[
+            EnvioComunicacao.Status.ENTREGUE,
+            EnvioComunicacao.Status.RESPONDIDO,
+        ]
+    ).count()
+    return {
+        "alertas_nao_lidos": notificacoes.filter(lida_em__isnull=True).count(),
+        "comunicacoes_agendadas": comunicacoes.filter(status=CampanhaComunicacao.Status.AGENDADA).count(),
+        "comunicacoes_hoje": comunicacoes.filter(
+            status__in=[CampanhaComunicacao.Status.AGENDADA, CampanhaComunicacao.Status.ENVIANDO],
+            data_envio__date=hoje,
+        ).count(),
+        "comunicacoes_atrasadas": comunicacoes.filter(
+            status=CampanhaComunicacao.Status.AGENDADA,
+            data_envio__lt=agora,
+        ).count(),
+        "tarefas_em_fluxo": tarefas.filter(
+            status__in=[TarefaEquipe.Status.EM_ANDAMENTO, TarefaEquipe.Status.EM_REVISAO]
+        ).count(),
+        "eventos_hoje": eventos.exclude(status__in=["cancelado", "concluido"]).filter(data=hoje).count(),
+        "contas_vencidas": financeiro.exclude(
+            status__in=[
+                LancamentoFinanceiro.Status.LIQUIDADO,
+                LancamentoFinanceiro.Status.CANCELADO,
+            ]
+        )
+        .filter(data_vencimento__lt=hoje)
+        .count(),
+        "taxa_entrega": round((entregues / enviados) * 100, 2) if enviados else 0.0,
     }

@@ -320,6 +320,34 @@ function initFinanceiroChart() {
     });
 }
 
+function initAlertasChart() {
+    const data = parseJsonScript("grafico-alertas-categoria-data");
+    if (!data || !data.length) {
+        return;
+    }
+    buildChart("graficoAlertasCategoria", {
+        type: "doughnut",
+        data: {
+            labels: data.map((item) => item.rotulo),
+            datasets: [
+                {
+                    data: data.map((item) => item.total),
+                    backgroundColor: ["#e11d48", "#f97316", "#0f766e", "#1d4ed8", "#7c3aed", "#16a34a", "#334155"],
+                    borderWidth: 0,
+                },
+            ],
+        },
+        options: {
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: { color: chartTextColor() },
+                },
+            },
+        },
+    });
+}
+
 function initMapaCadastros() {
     const container = document.getElementById("mapaCadastrosAutorizados");
     const data = parseJsonScript("mapa-cadastros-data");
@@ -369,5 +397,6 @@ document.addEventListener("DOMContentLoaded", () => {
     initLiderancasRegiaoChart();
     initMetasEquipeChart();
     initFinanceiroChart();
+    initAlertasChart();
     initMapaCadastros();
 });
