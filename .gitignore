@@ -11,6 +11,7 @@ __pycache__/
 media/
 staticfiles/
 backups/
+.render-deploy-result.json
 htmlcov/
 .coverage
 .pytest_cache/

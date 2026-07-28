@@ -165,3 +165,27 @@ O repositorio inclui um `render.yaml` pronto para Blueprint com:
 Antes da primeira sincronizacao, revise os planos e preencha manualmente as variaveis marcadas com `sync: false`.
 Use a mesma `SECRET_KEY`, os mesmos `ALLOWED_HOSTS` e as mesmas `CSRF_TRUSTED_ORIGINS` nos tres servicos Django/Celery do blueprint.
 O blueprint usa scripts versionados em `scripts/` para build, predeploy e start, reduzindo divergencia entre ambiente local, Docker e Render.
+
+Link direto para criar o Blueprint no Render:
+
+```text
+https://dashboard.render.com/blueprint/new?repo=https%3A%2F%2Fgithub.com%2Fjhonwictordev%2Fplataforma-campanha
+```
+
+## 10. Deploy via API do Render
+
+Quando o deploy pelo Dashboard nao for pratico, use o script local abaixo. Ele pede a API key do Render em prompt seguro, nao grava o token, gera `SECRET_KEY` em memoria e salva apenas IDs e URLs publicas em `.render-deploy-result.json`.
+
+Ambiente completo e estavel:
+
+```bash
+python scripts/deploy_render_api.py --profile production-starter
+```
+
+Demonstracao sem workers Celery:
+
+```bash
+python scripts/deploy_render_api.py --profile demo-free
+```
+
+No perfil `production-starter`, o script exige confirmacao digitando `CONFIRMO` antes de criar recursos pagos. Revogue a API key no Render apos o deploy se ela tiver sido criada apenas para esta operacao.
