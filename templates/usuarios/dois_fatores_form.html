@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }} | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="h4 mb-3">{{ titulo }}</h2>
+                <p class="text-secondary">{{ descricao }}</p>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.senha_atual.id_for_label }}">{{ form.senha_atual.label }}</label>
+                        {{ form.senha_atual }}
+                        {% for error in form.senha_atual.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" type="submit">{{ rotulo_botao }}</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'usuarios:dois_fatores' %}">Voltar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -33,6 +33,7 @@ CELERY_BROKER_URL=redis://127.0.0.1:6379/0
 CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/1
 HEALTHCHECK_VERIFY_REDIS=True
 DEFAULT_FROM_EMAIL=nao-responda@seu-dominio.com
+OTP_TOTP_ISSUER=Plataforma Campanha
 WHATSAPP_OFFICIAL_API_URL=https://api-oficial-whatsapp.exemplo.com/messages
 WHATSAPP_OFFICIAL_API_TOKEN=defina_token_oficial_whatsapp
 WHATSAPP_OFFICIAL_WEBHOOK_TOKEN=defina_token_webhook_whatsapp
@@ -119,6 +120,7 @@ Para reconciliar retorno oficial de status, configure os endpoints abaixo no pro
 - Rotina de backup configurada
 - Politicas de retencao revisadas com apoio juridico e contabil
 - Endpoint `/saude/prontidao/` configurado como health check do provedor
+- `OTP_TOTP_ISSUER` revisado se a autenticacao em dois fatores estiver habilitada
 
 ## 7. Backup operacional
 

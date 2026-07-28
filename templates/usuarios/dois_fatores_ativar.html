@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Ativar 2FA | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <p class="eyebrow mb-1">Configurar autenticador</p>
+                <h2 class="h3 mb-3">Ativar autenticacao em dois fatores</h2>
+                <p class="text-secondary">Escaneie o QR Code abaixo em um aplicativo como Google Authenticator, Microsoft Authenticator, 1Password ou similar.</p>
+                <div class="text-center rounded-4 border bg-white p-3 mb-3">
+                    <img class="img-fluid" alt="QR Code do autenticador" src="{{ qr_code_data_uri }}">
+                </div>
+                <div class="small text-secondary">
+                    <div><strong>Segredo manual:</strong></div>
+                    <code class="d-block p-2 bg-body-tertiary rounded mt-1">{{ segredo_manual }}</code>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h3 class="h5 mb-3">Validar o primeiro codigo</h3>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.token.id_for_label }}">{{ form.token.label }}</label>
+                        {{ form.token }}
+                        {% for error in form.token.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <button class="btn btn-primary" type="submit">Confirmar e ativar</button>
+                </form>
+                <hr>
+                <ol class="small text-secondary ps-3 mb-0">
+                    <li>Abra o aplicativo autenticador.</li>
+                    <li>Escaneie o QR Code ou cole o segredo manual.</li>
+                    <li>Informe aqui o primeiro codigo gerado.</li>
+                    <li>Na proxima etapa, guarde seus codigos de recuperacao.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

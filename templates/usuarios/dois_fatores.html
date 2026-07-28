@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Seguranca da conta | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <p class="eyebrow mb-1">Seguranca da conta</p>
+                <h2 class="h3 mb-3">Autenticacao em dois fatores</h2>
+                {% if dois_fatores_ativo %}
+                    <div class="alert alert-success">
+                        O segundo fator esta ativo nesta conta. Sua campanha fica mais protegida contra acessos indevidos.
+                    </div>
+                    <p class="mb-4">Codigos de recuperacao disponiveis: <strong>{{ codigos_recuperacao_restantes }}</strong></p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-outline-primary" href="{% url 'usuarios:dois_fatores_regenerar' %}">Gerar novos codigos</a>
+                        <a class="btn btn-outline-secondary" href="{% url 'usuarios:dois_fatores_codigos' %}">Ver ultimos codigos</a>
+                        <a class="btn btn-outline-danger" href="{% url 'usuarios:dois_fatores_desativar' %}">Desativar 2FA</a>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        O segundo fator ainda nao esta ativo. Recomendado para contas com acesso a dados pessoais, financeiros e estrategicos.
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-primary" href="{% url 'usuarios:dois_fatores_ativar' %}">Ativar 2FA agora</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h3 class="h5 mb-3">Como funciona</h3>
+                <ul class="small text-secondary ps-3 mb-0">
+                    <li>Use um aplicativo autenticador compativel com TOTP.</li>
+                    <li>Escaneie o QR Code e confirme o primeiro codigo de seis digitos.</li>
+                    <li>Guarde os codigos de recuperacao fora do sistema.</li>
+                    <li>Se gerar novos codigos, os antigos deixam de funcionar.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

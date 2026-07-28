@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 
 Usuario = get_user_model()
@@ -71,3 +72,62 @@ class FormularioPerfilUsuario(FormularioBaseBootstrap):
             "foto_perfil",
             "tema_escuro",
         )
+
+
+class FormularioAutenticacaoUsuario(AuthenticationForm):
+    username = forms.EmailField(label="E-mail")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].widget.attrs.update(
+            {
+                "class": "form-control",
+                "autocomplete": "username",
+                "placeholder": "voce@exemplo.com",
+            }
+        )
+        self.fields["password"].widget.attrs.update(
+            {
+                "class": "form-control",
+                "autocomplete": "current-password",
+                "placeholder": "Sua senha",
+            }
+        )
+
+
+class FormularioTokenDoisFatores(forms.Form):
+    token = forms.CharField(
+        label="Codigo de verificacao",
+        max_length=16,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "inputmode": "numeric",
+                "autocomplete": "one-time-code",
+                "placeholder": "000000 ou codigo de recuperacao",
+            }
+        ),
+    )
+
+
+class FormularioConfirmacaoSenha(forms.Form):
+    senha_atual = forms.CharField(
+        label="Senha atual",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "autocomplete": "current-password",
+                "placeholder": "Confirme sua senha",
+            }
+        ),
+    )
+
+    def __init__(self, *args, usuario=None, **kwargs):
+        self.usuario = usuario
+        super().__init__(*args, **kwargs)
+
+    def clean_senha_atual(self):
+        senha = self.cleaned_data["senha_atual"]
+        if self.usuario is None or not self.usuario.check_password(senha):
+            raise forms.ValidationError("A senha informada nao confere.")
+        return senha

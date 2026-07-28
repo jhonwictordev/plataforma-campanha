@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.auth import views as auth_views
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
@@ -26,6 +27,7 @@ from financeiro.api_views import (
 from liderancas.api_views import LiderancaViewSet
 from mapa_eleitoral.api_views import MapaEleitoralViewSet
 from metas.api_views import MetaCampanhaViewSet
+from usuarios.views import CancelarLoginDoisFatoresView, LoginDoisFatoresView, LoginUsuarioView
 
 api_router = DefaultRouter()
 api_router.register("agenda-eventos", EventoAgendaViewSet, basename="api-agenda-eventos")
@@ -48,7 +50,16 @@ api_router.register("metas-campanha", MetaCampanhaViewSet, basename="api-metas-c
 urlpatterns = [
     path("", include("core.urls")),
     path("admin/", admin.site.urls),
-    path("contas/", include("django.contrib.auth.urls")),
+    path("contas/login/", LoginUsuarioView.as_view(), name="login"),
+    path("contas/logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("contas/2fa/", LoginDoisFatoresView.as_view(), name="login_2fa"),
+    path("contas/2fa/cancelar/", CancelarLoginDoisFatoresView.as_view(), name="login_2fa_cancelar"),
+    path("contas/password_change/", auth_views.PasswordChangeView.as_view(), name="password_change"),
+    path("contas/password_change/done/", auth_views.PasswordChangeDoneView.as_view(), name="password_change_done"),
+    path("contas/password_reset/", auth_views.PasswordResetView.as_view(), name="password_reset"),
+    path("contas/password_reset/done/", auth_views.PasswordResetDoneView.as_view(), name="password_reset_done"),
+    path("contas/reset/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
+    path("contas/reset/done/", auth_views.PasswordResetCompleteView.as_view(), name="password_reset_complete"),
     path("usuarios/", include("usuarios.urls")),
     path("campanhas/", include("campanhas.urls")),
     path("liderancas/", include("liderancas.urls")),

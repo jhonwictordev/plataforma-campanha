@@ -146,6 +146,21 @@ Todos os dados gerados por `popular_dados_demo` sao sinteticos e usam o dominio 
 
 Se uma campanha de WhatsApp ou SMS chegar ao horario de execucao sem a integracao oficial configurada, o sistema pausa a campanha, registra o erro e notifica o responsavel internamente em vez de tentar um disparo inseguro.
 
+## Autenticacao em dois fatores
+
+O sistema oferece 2FA opcional por TOTP para contas internas:
+
+- ativacao via QR Code em `usuarios/seguranca/dois-fatores/`
+- confirmacao do segundo fator no login
+- codigos de recuperacao de uso unico
+- logs de seguranca para ativacao, desativacao, tentativa invalida e validacao
+
+Para personalizar o emissor mostrado no aplicativo autenticador, configure:
+
+```env
+OTP_TOTP_ISSUER=Plataforma Campanha
+```
+
 ## Webhooks oficiais
 
 O sistema agora aceita retornos oficiais de status para reconciliar entrega, falha, resposta e descadastro:

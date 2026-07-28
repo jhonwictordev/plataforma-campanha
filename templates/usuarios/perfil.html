@@ -22,6 +22,9 @@
                     <div class="d-flex gap-2 mt-4">
                         <button class="btn btn-primary" type="submit">Atualizar perfil</button>
                         <a class="btn btn-outline-secondary" href="{% url 'password_change' %}">Alterar senha</a>
+                        <a class="btn btn-outline-dark" href="{% url 'usuarios:dois_fatores' %}">
+                            {% if dois_fatores_ativo %}Gerenciar 2FA{% else %}Ativar 2FA{% endif %}
+                        </a>
                     </div>
                 </form>
             </div>

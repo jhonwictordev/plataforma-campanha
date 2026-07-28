@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Validar segundo fator | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100">
+    <div class="col-lg-5">
+        <div class="card shadow-lg border-0">
+            <div class="card-body p-4 p-lg-5">
+                <p class="eyebrow mb-1">Etapa de seguranca</p>
+                <h1 class="h3 mb-3">Confirmar autenticacao em duas etapas</h1>
+                <p class="text-secondary">
+                    Informe o codigo atual do aplicativo autenticador ou um codigo de recuperacao para a conta
+                    <strong>{{ usuario_pre_2fa.email }}</strong>.
+                </p>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.token.id_for_label }}">{{ form.token.label }}</label>
+                        {{ form.token }}
+                        {% for error in form.token.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-grow-1" type="submit">Concluir login</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'login_2fa_cancelar' %}">Cancelar</a>
+                    </div>
+                </form>
+                <div class="alert alert-light border mt-4 mb-0">
+                    <strong>Dica:</strong> se voce perdeu o autenticador, use um dos codigos de recuperacao gerados na ativacao do 2FA.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
