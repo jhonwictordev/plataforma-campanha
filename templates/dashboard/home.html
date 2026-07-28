@@ -1,86 +1,318 @@
 {% extends "base.html" %}
 {% block title %}Dashboard | {{ nome_aplicacao }}{% endblock %}
 {% block content %}
+{{ grafico_evolucao|json_script:"grafico-evolucao-data" }}
 {{ grafico_status|json_script:"grafico-status-data" }}
 {{ grafico_cidades|json_script:"grafico-cidades-data" }}
+{{ grafico_bairros|json_script:"grafico-bairros-data" }}
+{{ grafico_liderancas_regiao|json_script:"grafico-liderancas-regiao-data" }}
+{{ grafico_metas_equipe|json_script:"grafico-metas-equipe-data" }}
+{{ grafico_financeiro|json_script:"grafico-financeiro-data" }}
+{{ mapa_cadastros|json_script:"mapa-cadastros-data" }}
+
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
-        <p class="eyebrow mb-1">Visão geral</p>
+        <p class="eyebrow mb-1">Painel estrategico</p>
         <h2 class="h3 mb-1">Dashboard principal</h2>
         <p class="text-secondary mb-0">
             {% if campanha_atual %}
-                {{ campanha_atual.nome_campanha }} • {{ campanha_atual.nome_candidato }}
+                {{ campanha_atual.nome_campanha }} | {{ campanha_atual.nome_candidato }}
             {% else %}
-                Ambiente administrativo ou sem campanha vinculada.
+                Consolidado administrativo em {{ data_referencia }}.
             {% endif %}
         </p>
     </div>
-    <a class="btn btn-primary" href="{% url 'campanhas:nova' %}">
-        <i class="bi bi-plus-circle"></i>
-        Nova campanha
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" href="{% url 'agenda:home' %}">
+            <i class="bi bi-calendar-event"></i>
+            Ver agenda
+        </a>
+        <a class="btn btn-outline-primary" href="{% url 'relatorios:home' %}">
+            <i class="bi bi-file-earmark-bar-graph"></i>
+            Relatorios
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            {% if mostrar_filtro_campanha %}
+                <div class="col-md-3">
+                    <label class="form-label">Campanha</label>
+                    <select class="form-select" name="campanha">
+                        <option value="">Todas</option>
+                        {% for campanha in campanhas_disponiveis %}
+                            <option value="{{ campanha.pk }}" {% if filtros.campanha == campanha.pk|stringformat:"s" %}selected{% endif %}>
+                                {{ campanha.nome_campanha }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+            <div class="col-md-3">
+                <label class="form-label">Periodo</label>
+                <select class="form-select" name="periodo">
+                    {% for valor, rotulo in periodo_opcoes %}
+                        <option value="{{ valor }}" {% if filtros.periodo == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Cidade</label>
+                <select class="form-select" name="cidade">
+                    <option value="">Todas</option>
+                    {% for cidade in cidades_disponiveis %}
+                        <option value="{{ cidade }}" {% if filtros.cidade == cidade %}selected{% endif %}>{{ cidade }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Bairro</label>
+                <select class="form-select" name="bairro">
+                    <option value="">Todos</option>
+                    {% for bairro in bairros_disponiveis %}
+                        <option value="{{ bairro }}" {% if filtros.bairro == bairro %}selected{% endif %}>{{ bairro }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" type="submit">Filtrar</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Contatos</span><strong>{{ indicadores.contatos }}</strong></div></div>
-    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Lideranças</span><strong>{{ indicadores.liderancas }}</strong></div></div>
-    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Voluntários</span><strong>{{ indicadores.voluntarios }}</strong></div></div>
-    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Tarefas atrasadas</span><strong>{{ indicadores.tarefas_atrasadas }}</strong></div></div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Total de contatos</span>
+            <strong>{{ indicadores.contatos }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Apoiadores</span>
+            <strong>{{ indicadores.apoiadores }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Liderancas</span>
+            <strong>{{ indicadores.liderancas }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Voluntarios</span>
+            <strong>{{ indicadores.voluntarios }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Novos cadastros</span>
+            <strong>{{ indicadores.novos_cadastros }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Proximos compromissos</span>
+            <strong>{{ indicadores.compromissos_proximos }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Tarefas atrasadas</span>
+            <strong>{{ indicadores.tarefas_atrasadas }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card h-100">
+            <span>Saldo no periodo</span>
+            <strong>R$ {{ indicadores.saldo_financeiro|floatformat:2 }}</strong>
+        </div>
+    </div>
 </div>
 
 <div class="row g-4">
     <div class="col-xl-8">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                     <div>
-                        <h3 class="h5 mb-1">Distribuição por status</h3>
-                        <p class="text-secondary small mb-0">Dados de CRM por etapa do relacionamento.</p>
+                        <h3 class="h5 mb-1">Evolucao de cadastros</h3>
+                        <p class="text-secondary small mb-0">Contatos e liderancas registrados dentro do periodo filtrado.</p>
                     </div>
+                    <span class="badge text-bg-light border">Atualizado em {{ data_referencia }}</span>
                 </div>
-                <canvas id="graficoStatusContato" height="120"></canvas>
+                <canvas id="graficoEvolucaoCadastros" height="120"></canvas>
             </div>
         </div>
     </div>
     <div class="col-xl-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                <h3 class="h5 mb-3">Resumo financeiro</h3>
-                <div class="d-flex flex-column gap-3">
-                    <div class="finance-card finance-positive">
-                        <span>Receitas</span>
-                        <strong>R$ {{ financeiro_resumo.receitas }}</strong>
-                    </div>
-                    <div class="finance-card finance-negative">
-                        <span>Despesas</span>
-                        <strong>R$ {{ financeiro_resumo.despesas }}</strong>
-                    </div>
-                    <div class="finance-card finance-neutral">
-                        <span>Metas abertas</span>
-                        <strong>{{ indicadores.metas_abertas }}</strong>
-                    </div>
-                </div>
+                <h3 class="h5 mb-1">Distribuicao por status</h3>
+                <p class="text-secondary small mb-3">Situacao do funil de relacionamento do CRM.</p>
+                <canvas id="graficoStatusContato" height="180"></canvas>
             </div>
         </div>
     </div>
-    <div class="col-xl-7">
-        <div class="card border-0 shadow-sm">
+
+    <div class="col-xl-6">
+        <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                <h3 class="h5 mb-3">Top cidades por contatos</h3>
-                <canvas id="graficoCidadeContato" height="150"></canvas>
+                <h3 class="h5 mb-1">Contatos por cidade</h3>
+                <p class="text-secondary small mb-3">Top territorios com maior volume cadastrado.</p>
+                <canvas id="graficoCidadeContato" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-1">Contatos por bairro</h3>
+                <p class="text-secondary small mb-3">Concentracao local para mobilizacao e retorno.</p>
+                <canvas id="graficoBairroContato" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-1">Liderancas por regiao</h3>
+                <p class="text-secondary small mb-3">Territorios com maior densidade de articulacao.</p>
+                <canvas id="graficoLiderancasRegiao" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-1">Metas por equipe</h3>
+                <p class="text-secondary small mb-3">Percentual agregado de entrega por frente de trabalho.</p>
+                <canvas id="graficoMetasEquipe" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Receitas e despesas</h3>
+                        <p class="text-secondary small mb-0">Comparativo mensal do periodo filtrado.</p>
+                    </div>
+                    <div class="small text-end">
+                        <div class="text-secondary">Receitas: <strong>R$ {{ financeiro_resumo.receitas|floatformat:2 }}</strong></div>
+                        <div class="text-secondary">Despesas: <strong>R$ {{ financeiro_resumo.despesas|floatformat:2 }}</strong></div>
+                    </div>
+                </div>
+                <canvas id="graficoFinanceiroMensal" height="180"></canvas>
             </div>
         </div>
     </div>
     <div class="col-xl-5">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                <h3 class="h5 mb-3">Arquitetura desta base</h3>
-                <ul class="list-unstyled mb-0 d-grid gap-2">
-                    <li><i class="bi bi-check2-circle text-primary"></i> Django modular por domínio</li>
-                    <li><i class="bi bi-check2-circle text-primary"></i> PostgreSQL + Celery + Redis + Docker</li>
-                    <li><i class="bi bi-check2-circle text-primary"></i> LGPD com consentimento e segregação por campanha</li>
-                    <li><i class="bi bi-check2-circle text-primary"></i> Dashboard responsivo com Bootstrap 5 e Chart.js</li>
-                </ul>
+                <h3 class="h5 mb-1">Mapa territorial autorizado</h3>
+                <p class="text-secondary small mb-3">Exibe apenas pontos agregados com dois ou mais cadastros autorizados.</p>
+                <div id="mapaCadastrosAutorizados" class="rounded-4 border" style="height: 320px;"></div>
+                {% if not mapa_cadastros %}
+                    <div class="small text-secondary mt-3">
+                        Ainda nao ha pontos agregados suficientes com consentimento e coordenadas para exibir no painel.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-1">Proximos compromissos</h3>
+                <p class="text-secondary small mb-3">Agenda confirmada e pendencias proximas.</p>
+                <div class="list-group list-group-flush">
+                    {% for evento in proximos_compromissos %}
+                        <div class="list-group-item px-0 py-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <strong>{{ evento.titulo }}</strong>
+                                    <div class="small text-secondary">{{ evento.get_tipo_display }} | {{ evento.data|date:"d/m/Y" }} | {{ evento.horario_inicial|time:"H:i" }}</div>
+                                </div>
+                                <span class="badge text-bg-light border">{{ evento.get_status_display }}</span>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="py-4 text-secondary small">Nenhum compromisso futuro encontrado.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-1">Tarefas criticas</h3>
+                <p class="text-secondary small mb-3">Itens em atraso que exigem repactuacao.</p>
+                <div class="list-group list-group-flush">
+                    {% for tarefa in tarefas_criticas %}
+                        <div class="list-group-item px-0 py-3">
+                            <strong>{{ tarefa.titulo }}</strong>
+                            <div class="small text-secondary">
+                                {% if tarefa.responsavel %}{{ tarefa.responsavel.nome }} | {% endif %}
+                                {{ tarefa.prazo|date:"d/m/Y H:i" }}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="py-4 text-secondary small">Nao ha tarefas atrasadas para os filtros atuais.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-1">Atividades recentes</h3>
+                <p class="text-secondary small mb-3">Rastro operacional consolidado pela auditoria.</p>
+                <div class="list-group list-group-flush">
+                    {% for item in atividades_recentes %}
+                        <div class="list-group-item px-0 py-3">
+                            <strong>{{ item.resumo }}</strong>
+                            <div class="small text-secondary">{{ item.modelo }} | {{ item.acao }} | {{ item.criado_em|date:"d/m/Y H:i" }}</div>
+                        </div>
+                    {% empty %}
+                        <div class="py-4 text-secondary small">Ainda nao ha registros recentes para mostrar.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                    <div>
+                        <h3 class="h5 mb-1">Leituras rapidas do periodo</h3>
+                        <p class="text-secondary small mb-0">Resumo consolidado para operacao, relacionamento e comunicacao.</p>
+                    </div>
+                    <div class="d-flex gap-3 flex-wrap small">
+                        <div class="finance-card finance-neutral py-3 px-4">
+                            <span>Respostas de comunicacao</span>
+                            <strong>{{ comunicacao_resumo.respostas }}</strong>
+                        </div>
+                        <div class="finance-card finance-negative py-3 px-4">
+                            <span>Falhas de comunicacao</span>
+                            <strong>{{ comunicacao_resumo.falhas }}</strong>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
