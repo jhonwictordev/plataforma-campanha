@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Registro de auditoria | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+    <div>
+        <p class="eyebrow mb-1">Trilha de auditoria</p>
+        <h2 class="h3 mb-1">{{ registro.resumo }}</h2>
+        <p class="text-secondary mb-0">{{ registro.modelo }} | {{ registro.acao }} | {{ registro.criado_em|date:"d/m/Y H:i" }}</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'auditoria:home' %}">Voltar</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Contexto</h3>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Acao</dt>
+                    <dd class="col-sm-8">{{ registro.acao }}</dd>
+                    <dt class="col-sm-4">Modelo</dt>
+                    <dd class="col-sm-8">{{ registro.modelo }}</dd>
+                    <dt class="col-sm-4">Objeto</dt>
+                    <dd class="col-sm-8">{{ registro.objeto_id }}</dd>
+                    <dt class="col-sm-4">Usuario</dt>
+                    <dd class="col-sm-8">{{ registro.usuario.nome_completo|default:"Sistema" }}</dd>
+                    <dt class="col-sm-4">IP</dt>
+                    <dd class="col-sm-8">{{ registro.endereco_ip|default:"Nao registrado" }}</dd>
+                    <dt class="col-sm-4">Campanha</dt>
+                    <dd class="col-sm-8">{{ registro.campanha.nome_campanha|default:"Nao vinculada" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Dados anteriores</h3>
+                <pre class="small bg-light border rounded-4 p-3 mb-0">{{ registro.dados_anteriores }}</pre>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Dados novos</h3>
+                <pre class="small bg-light border rounded-4 p-3 mb-0">{{ registro.dados_novos }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Auditoria | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<style>
+    .audit-card {
+        border-radius: 1.2rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
+    }
+
+    [data-bs-theme="dark"] .audit-card {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96));
+    }
+
+    .audit-chip {
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 999px;
+        padding: 0.45rem 0.75rem;
+        font-size: 0.82rem;
+        color: var(--bs-secondary-color);
+        background: rgba(255, 255, 255, 0.65);
+    }
+
+    [data-bs-theme="dark"] .audit-chip {
+        background: rgba(15, 23, 42, 0.88);
+    }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Governanca e LGPD</p>
+        <h2 class="h3 mb-1">Auditoria e seguranca</h2>
+        <p class="text-secondary mb-0">Painel operacional atualizado em {{ data_referencia }} com trilhas, retencao e atendimento ao titular.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" href="{% url 'auditoria:politica_nova' %}">
+            <i class="bi bi-shield-check"></i>
+            Nova politica
+        </a>
+        <a class="btn btn-outline-primary" href="{% url 'auditoria:solicitacao_nova' %}">
+            <i class="bi bi-person-lines-fill"></i>
+            Nova solicitacao
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            {% if pode_filtrar_campanha %}
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ filtro_form.campanha.id_for_label }}">Campanha</label>
+                    {{ filtro_form.campanha }}
+                </div>
+            {% endif %}
+            <div class="col-md-2">
+                <label class="form-label" for="{{ filtro_form.data_inicial.id_for_label }}">Data inicial</label>
+                {{ filtro_form.data_inicial }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="{{ filtro_form.data_final.id_for_label }}">Data final</label>
+                {{ filtro_form.data_final }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="{{ filtro_form.usuario.id_for_label }}">Usuario</label>
+                {{ filtro_form.usuario }}
+            </div>
+            <div class="col-md-1">
+                <label class="form-label" for="{{ filtro_form.severidade.id_for_label }}">Severidade</label>
+                {{ filtro_form.severidade }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="{{ filtro_form.busca.id_for_label }}">Busca</label>
+                {{ filtro_form.busca }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="{{ filtro_form.acao.id_for_label }}">Acao</label>
+                {{ filtro_form.acao }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="{{ filtro_form.modelo.id_for_label }}">Modelo</label>
+                {{ filtro_form.modelo }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="{{ filtro_form.evento.id_for_label }}">Evento</label>
+                {{ filtro_form.evento }}
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" type="submit">Aplicar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-2">
+        <div class="metric-card h-100">
+            <span>Registros</span>
+            <strong>{{ resumo.registros }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-2">
+        <div class="metric-card h-100">
+            <span>Logs de seguranca</span>
+            <strong>{{ resumo.logs }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-2">
+        <div class="metric-card h-100">
+            <span>Criticos</span>
+            <strong>{{ resumo.logs_criticos }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-2">
+        <div class="metric-card h-100">
+            <span>Avisos</span>
+            <strong>{{ resumo.logs_aviso }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-2">
+        <div class="metric-card h-100">
+            <span>Solicitacoes abertas</span>
+            <strong>{{ resumo.solicitacoes_abertas }}</strong>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-2">
+        <div class="metric-card h-100">
+            <span>Politicas ativas</span>
+            <strong>{{ resumo.politicas_ativas }}</strong>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Registros de auditoria</h3>
+                        <p class="text-secondary small mb-0">Criacoes, atualizacoes e exclusoes dos modulos auditados.</p>
+                    </div>
+                    <span class="audit-chip">ultimos {{ registros_recentes|length }} itens</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Quando</th>
+                                <th>Acao</th>
+                                <th>Modelo</th>
+                                <th>Resumo</th>
+                                <th>Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for registro in registros_recentes %}
+                                <tr>
+                                    <td>{{ registro.criado_em|date:"d/m/Y H:i" }}</td>
+                                    <td><span class="badge text-bg-light border">{{ registro.acao }}</span></td>
+                                    <td>{{ registro.modelo }}</td>
+                                    <td>
+                                        <a href="{% url 'auditoria:registro_detalhe' registro.pk %}">{{ registro.resumo }}</a>
+                                    </td>
+                                    <td>{{ registro.usuario.nome_completo|default:"Sistema" }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-secondary">Nenhum registro encontrado para os filtros atuais.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Logs de seguranca</h3>
+                        <p class="text-secondary small mb-0">Autenticacao, eventos operacionais e incidentes recentes.</p>
+                    </div>
+                    <span class="audit-chip">ultimos {{ logs_recentes|length }} itens</span>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for log in logs_recentes %}
+                        <a href="{% url 'auditoria:log_detalhe' log.pk %}" class="list-group-item list-group-item-action px-0 py-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <strong>{{ log.evento }}</strong>
+                                    <div class="small text-secondary">{{ log.descricao|truncatechars:120 }}</div>
+                                    <div class="small text-secondary">{{ log.criado_em|date:"d/m/Y H:i" }}</div>
+                                </div>
+                                <span class="badge {% if log.severidade == 'critico' %}text-bg-danger{% elif log.severidade == 'aviso' %}text-bg-warning{% else %}text-bg-light border{% endif %}">
+                                    {{ log.severidade }}
+                                </span>
+                            </div>
+                        </a>
+                    {% empty %}
+                        <div class="py-3 small text-secondary">Nenhum log de seguranca encontrado.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Politicas de retencao</h3>
+                        <p class="text-secondary small mb-0">Preview dos registros que ja ultrapassaram a janela configurada.</p>
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'auditoria:politica_nova' %}">Nova politica</a>
+                </div>
+                <div class="d-grid gap-3">
+                    {% for politica in politicas %}
+                        <div class="audit-card p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                                <div>
+                                    <strong class="d-block">{{ politica.nome }}</strong>
+                                    <div class="small text-secondary">{{ politica.get_tipo_registro_display }} | {{ politica.dias_retencao }} dias de retencao</div>
+                                    <div class="small text-secondary">{{ politica.base_legal|default:"Base legal nao informada" }}</div>
+                                </div>
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'auditoria:politica_editar' politica.pk %}">Editar</a>
+                            </div>
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6">
+                                    <div class="finance-card finance-negative h-100">
+                                        <span>Registros expirados</span>
+                                        <strong>{{ politica.registros_expirados }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="finance-card finance-neutral h-100">
+                                        <span>Para anonimizar</span>
+                                        <strong>{{ politica.registros_para_anonimizar }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if politica.observacoes %}
+                                <div class="small text-secondary mt-3">{{ politica.observacoes }}</div>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <div class="small text-secondary">Nenhuma politica de retencao cadastrada para esta campanha.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Solicitacoes do titular</h3>
+                        <p class="text-secondary small mb-0">Fila interna de atendimento aos direitos previstos pela LGPD.</p>
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'auditoria:solicitacao_nova' %}">Nova solicitacao</a>
+                </div>
+                <div class="d-grid gap-3">
+                    {% for solicitacao in solicitacoes_recentes %}
+                        <div class="audit-card p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                                <div>
+                                    <strong class="d-block">{{ solicitacao.nome_solicitante }}</strong>
+                                    <div class="small text-secondary">{{ solicitacao.get_tipo_solicitacao_display }} | {{ solicitacao.get_status_display }}</div>
+                                    <div class="small text-secondary">
+                                        {% if solicitacao.prazo_resposta %}Prazo: {{ solicitacao.prazo_resposta|date:"d/m/Y" }}{% else %}Prazo nao informado{% endif %}
+                                    </div>
+                                </div>
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'auditoria:solicitacao_editar' solicitacao.pk %}">Abrir</a>
+                            </div>
+                            <div class="small text-secondary mt-2">{{ solicitacao.descricao|truncatechars:180 }}</div>
+                            {% if solicitacao.resultado_execucao %}
+                                <div class="alert alert-light border mt-3 mb-0 small">{{ solicitacao.resultado_execucao }}</div>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <div class="small text-secondary">Nenhuma solicitacao registrada para o periodo atual.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

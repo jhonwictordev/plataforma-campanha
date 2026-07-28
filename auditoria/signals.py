@@ -26,6 +26,7 @@ APPS_AUDITADOS = {
     "financeiro",
     "comunicacao",
     "usuarios",
+    "auditoria",
 }
 MODELOS_IGNORADOS = {
     "auditoria.RegistroAuditoria",
@@ -44,6 +45,10 @@ CAMPOS_SENSIVEIS = {
     "observacoes",
     "descricao",
     "detalhes",
+    "email_solicitante",
+    "telefone_solicitante",
+    "resposta_interna",
+    "resultado_execucao",
 }
 
 

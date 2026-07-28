@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Politica de retencao | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+    <div>
+        <p class="eyebrow mb-1">Governanca de dados</p>
+        <h2 class="h3 mb-1">{% if object %}Editar politica{% else %}Nova politica{% endif %} de retencao</h2>
+        <p class="text-secondary mb-0">Configure janelas de retencao e anonimização por tipo de registro e campanha.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'auditoria:home' %}">Voltar</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="{% if field.name == 'observacoes' %}col-12{% else %}col-md-6{% endif %}">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="form-text">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="small text-danger mt-1">{{ field.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Salvar politica</button>
+                <a class="btn btn-outline-secondary" href="{% url 'auditoria:home' %}">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Log de seguranca | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+    <div>
+        <p class="eyebrow mb-1">Seguranca operacional</p>
+        <h2 class="h3 mb-1">{{ log.evento }}</h2>
+        <p class="text-secondary mb-0">{{ log.criado_em|date:"d/m/Y H:i" }} | {{ log.severidade }}</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'auditoria:home' %}">Voltar</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Contexto</h3>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Evento</dt>
+                    <dd class="col-sm-8">{{ log.evento }}</dd>
+                    <dt class="col-sm-4">Severidade</dt>
+                    <dd class="col-sm-8">{{ log.severidade }}</dd>
+                    <dt class="col-sm-4">Usuario</dt>
+                    <dd class="col-sm-8">{{ log.usuario.nome_completo|default:"Nao identificado" }}</dd>
+                    <dt class="col-sm-4">IP</dt>
+                    <dd class="col-sm-8">{{ log.endereco_ip|default:"Nao registrado" }}</dd>
+                    <dt class="col-sm-4">Campanha</dt>
+                    <dd class="col-sm-8">{{ log.campanha.nome_campanha|default:"Nao vinculada" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Descricao</h3>
+                <pre class="small bg-light border rounded-4 p-3 mb-0">{{ log.descricao }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

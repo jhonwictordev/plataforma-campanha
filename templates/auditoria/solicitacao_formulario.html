@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Solicitacao do titular | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+    <div>
+        <p class="eyebrow mb-1">LGPD operacional</p>
+        <h2 class="h3 mb-1">{% if object %}Atualizar solicitacao{% else %}Nova solicitacao{% endif %} do titular</h2>
+        <p class="text-secondary mb-0">Registre, acompanhe e conclua pedidos de acesso, correcao, anonimização, exclusao e revogacao.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'auditoria:home' %}">Voltar</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="{% if field.name == 'descricao' or field.name == 'resposta_interna' or field.name == 'executar_acao_lgpd' %}col-12{% else %}col-md-6{% endif %}">
+                    {% if field.name == 'executar_acao_lgpd' %}
+                        <div class="form-check mt-2">
+                            {{ field }}
+                            <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        </div>
+                    {% else %}
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                    {% endif %}
+                    {% if field.help_text %}
+                        <div class="form-text">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="small text-danger mt-1">{{ field.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% if object and object.resultado_execucao %}
+                <div class="col-12">
+                    <div class="alert alert-light border mb-0">
+                        <strong>Ultima execucao:</strong> {{ object.resultado_execucao }}
+                    </div>
+                </div>
+            {% endif %}
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Salvar solicitacao</button>
+                <a class="btn btn-outline-secondary" href="{% url 'auditoria:home' %}">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
