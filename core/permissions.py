@@ -80,6 +80,8 @@ PAPEIS_FINANCEIRO = ("administrador", "coordenador_geral", "financeiro")
 PAPEIS_FINANCEIRO_LEITURA = PAPEIS_FINANCEIRO
 PAPEIS_FINANCEIRO_ESCRITA = PAPEIS_FINANCEIRO
 PAPEIS_COMUNICACAO = ("administrador", "coordenador_geral", "coordenador_regional", "comunicacao")
+PAPEIS_COMUNICACAO_LEITURA = PAPEIS_COMUNICACAO
+PAPEIS_COMUNICACAO_ESCRITA = PAPEIS_COMUNICACAO
 PAPEIS_AUDITORIA = ("administrador", "coordenador_geral")
 
 

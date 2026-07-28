@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-lg-5">
+                <p class="eyebrow mb-1">Campanhas de comunicacao</p>
+                <h2 class="h3 mb-2">{% if object %}Editar campanha{% else %}Nova campanha{% endif %}</h2>
+                <p class="text-secondary mb-4">Use somente contatos com consentimento valido, canal autorizado e integracoes oficiais.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="row g-3">
+                        {% for field in form %}
+                            <div class="{% if field.name == 'conteudo' or field.name == 'observacoes_internas' or field.name == 'destinatarios' %}col-12{% else %}col-md-6{% endif %}">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button class="btn btn-primary" type="submit">Salvar campanha</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'comunicacao:home' %}">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

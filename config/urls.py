@@ -7,6 +7,12 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from rest_framework.routers import DefaultRouter
 
 from agenda.api_views import EventoAgendaViewSet
+from comunicacao.api_views import (
+    CampanhaComunicacaoViewSet,
+    EnvioComunicacaoViewSet,
+    ListaBloqueioViewSet,
+    ModeloMensagemViewSet,
+)
 from eleitores.api_views import ContatoCRMViewSet
 from equipe.api_views import IntegranteEquipeViewSet, TarefaEquipeViewSet
 from financeiro.api_views import (
@@ -20,6 +26,10 @@ from metas.api_views import MetaCampanhaViewSet
 
 api_router = DefaultRouter()
 api_router.register("agenda-eventos", EventoAgendaViewSet, basename="api-agenda-eventos")
+api_router.register("comunicacao-modelos", ModeloMensagemViewSet, basename="api-comunicacao-modelos")
+api_router.register("comunicacao-campanhas", CampanhaComunicacaoViewSet, basename="api-comunicacao-campanhas")
+api_router.register("comunicacao-bloqueios", ListaBloqueioViewSet, basename="api-comunicacao-bloqueios")
+api_router.register("comunicacao-envios", EnvioComunicacaoViewSet, basename="api-comunicacao-envios")
 api_router.register("financeiro-categorias", CategoriaFinanceiraViewSet, basename="api-financeiro-categorias")
 api_router.register("financeiro-centros-custo", CentroCustoViewSet, basename="api-financeiro-centros-custo")
 api_router.register("financeiro-lancamentos", LancamentoFinanceiroViewSet, basename="api-financeiro-lancamentos")

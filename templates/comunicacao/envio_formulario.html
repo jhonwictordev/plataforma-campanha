@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-lg-5">
+                <p class="eyebrow mb-1">Acompanhamento do envio</p>
+                <h2 class="h3 mb-2">{{ object.contato.nome_completo }}</h2>
+                <p class="text-secondary mb-4">{{ object.campanha_comunicacao.nome }} via {{ object.get_canal_display }}</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        {% for field in form %}
+                            <div class="{% if field.name in 'mensagem_enviada resposta_recebida observacoes_internas erro_envio' %}col-12{% else %}col-md-6{% endif %}">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button class="btn btn-primary" type="submit">Salvar acompanhamento</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'comunicacao:campanha_detalhe' object.campanha_comunicacao.pk %}">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
