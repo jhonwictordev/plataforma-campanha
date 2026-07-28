@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Configuração eleitoral</p>
+        <h2 class="h3 mb-0">Campanhas cadastradas</h2>
+    </div>
+    <a class="btn btn-primary" href="{% url 'campanhas:nova' %}">
+        <i class="bi bi-plus-circle"></i>
+        Nova campanha
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Campanha</th>
+                    <th>Candidato</th>
+                    <th>Cargo</th>
+                    <th>Município</th>
+                    <th>Situação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for campanha in campanhas %}
+                    <tr>
+                        <td>{{ campanha.nome_campanha }}</td>
+                        <td>{{ campanha.nome_candidato }}</td>
+                        <td>{{ campanha.get_cargo_disputado_display }}</td>
+                        <td>{{ campanha.municipio }}/{{ campanha.estado }}</td>
+                        <td><span class="badge text-bg-primary">{{ campanha.get_situacao_display }}</span></td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-secondary">Nenhuma campanha cadastrada até o momento.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

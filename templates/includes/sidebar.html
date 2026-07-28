@@ -1,0 +1,23 @@
+<aside class="sidebar border-end">
+    <div class="sidebar-brand">
+        <div class="brand-mark">CP</div>
+        <div>
+            <strong>Plataforma</strong>
+            <small>Campanha política</small>
+        </div>
+    </div>
+    <nav class="nav flex-column gap-1">
+        <a class="nav-link" href="{% url 'dashboard:home' %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+        <a class="nav-link" href="{% url 'campanhas:lista' %}"><i class="bi bi-megaphone"></i> Campanhas</a>
+        <a class="nav-link" href="{% url 'liderancas:home' %}"><i class="bi bi-diagram-3"></i> Lideranças</a>
+        <a class="nav-link" href="{% url 'eleitores:home' %}"><i class="bi bi-people"></i> CRM</a>
+        <a class="nav-link" href="{% url 'agenda:home' %}"><i class="bi bi-calendar-event"></i> Agenda</a>
+        <a class="nav-link" href="{% url 'equipe:home' %}"><i class="bi bi-kanban"></i> Equipe</a>
+        <a class="nav-link" href="{% url 'metas:home' %}"><i class="bi bi-bullseye"></i> Metas</a>
+        <a class="nav-link" href="{% url 'financeiro:home' %}"><i class="bi bi-cash-stack"></i> Financeiro</a>
+        <a class="nav-link" href="{% url 'comunicacao:home' %}"><i class="bi bi-chat-dots"></i> Comunicação</a>
+        <a class="nav-link" href="{% url 'mapa_eleitoral:home' %}"><i class="bi bi-geo-alt"></i> Mapa</a>
+        <a class="nav-link" href="{% url 'relatorios:home' %}"><i class="bi bi-file-earmark-bar-graph"></i> Relatórios</a>
+        <a class="nav-link" href="{% url 'auditoria:home' %}"><i class="bi bi-shield-lock"></i> Auditoria</a>
+    </nav>
+</aside>

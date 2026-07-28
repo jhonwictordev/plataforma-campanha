@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+{{ grafico_status|json_script:"grafico-status-data" }}
+{{ grafico_cidades|json_script:"grafico-cidades-data" }}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Visão geral</p>
+        <h2 class="h3 mb-1">Dashboard principal</h2>
+        <p class="text-secondary mb-0">
+            {% if campanha_atual %}
+                {{ campanha_atual.nome_campanha }} • {{ campanha_atual.nome_candidato }}
+            {% else %}
+                Ambiente administrativo ou sem campanha vinculada.
+            {% endif %}
+        </p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'campanhas:nova' %}">
+        <i class="bi bi-plus-circle"></i>
+        Nova campanha
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Contatos</span><strong>{{ indicadores.contatos }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Lideranças</span><strong>{{ indicadores.liderancas }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Voluntários</span><strong>{{ indicadores.voluntarios }}</strong></div></div>
+    <div class="col-md-6 col-xl-3"><div class="metric-card"><span>Tarefas atrasadas</span><strong>{{ indicadores.tarefas_atrasadas }}</strong></div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Distribuição por status</h3>
+                        <p class="text-secondary small mb-0">Dados de CRM por etapa do relacionamento.</p>
+                    </div>
+                </div>
+                <canvas id="graficoStatusContato" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Resumo financeiro</h3>
+                <div class="d-flex flex-column gap-3">
+                    <div class="finance-card finance-positive">
+                        <span>Receitas</span>
+                        <strong>R$ {{ financeiro_resumo.receitas }}</strong>
+                    </div>
+                    <div class="finance-card finance-negative">
+                        <span>Despesas</span>
+                        <strong>R$ {{ financeiro_resumo.despesas }}</strong>
+                    </div>
+                    <div class="finance-card finance-neutral">
+                        <span>Metas abertas</span>
+                        <strong>{{ indicadores.metas_abertas }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Top cidades por contatos</h3>
+                <canvas id="graficoCidadeContato" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Arquitetura desta base</h3>
+                <ul class="list-unstyled mb-0 d-grid gap-2">
+                    <li><i class="bi bi-check2-circle text-primary"></i> Django modular por domínio</li>
+                    <li><i class="bi bi-check2-circle text-primary"></i> PostgreSQL + Celery + Redis + Docker</li>
+                    <li><i class="bi bi-check2-circle text-primary"></i> LGPD com consentimento e segregação por campanha</li>
+                    <li><i class="bi bi-check2-circle text-primary"></i> Dashboard responsivo com Bootstrap 5 e Chart.js</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Entrar | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100">
+    <div class="col-xl-10">
+        <div class="card shadow-lg border-0 overflow-hidden">
+            <div class="row g-0">
+                <div class="col-lg-6 login-panel p-5">
+                    <p class="eyebrow">Sistema de gestão eleitoral</p>
+                    <h2 class="display-6 fw-bold">Coordene território, equipe e relacionamento em um só lugar.</h2>
+                    <p class="text-secondary mt-3">Base inicial focada em segurança, responsividade, rastreabilidade e separação por campanha.</p>
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <span class="badge rounded-pill text-bg-light">Bootstrap 5</span>
+                        <span class="badge rounded-pill text-bg-light">Chart.js</span>
+                        <span class="badge rounded-pill text-bg-light">Leaflet</span>
+                        <span class="badge rounded-pill text-bg-light">Django REST</span>
+                    </div>
+                </div>
+                <div class="col-lg-6 bg-body p-5">
+                    <h1 class="h3 mb-3">Entrar</h1>
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label" for="id_username">E-mail</label>
+                            <input class="form-control" type="email" name="username" id="id_username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="id_password">Senha</label>
+                            <input class="form-control" type="password" name="password" id="id_password" required>
+                        </div>
+                        {% if form.errors %}
+                            <div class="alert alert-danger">Não foi possível autenticar. Verifique as credenciais e tente novamente.</div>
+                        {% endif %}
+                        <button class="btn btn-primary w-100" type="submit">Acessar plataforma</button>
+                    </form>
+                    <div class="d-flex justify-content-between mt-3 small">
+                        <a href="{% url 'password_reset' %}">Esqueci minha senha</a>
+                        <a href="{% url 'admin:index' %}">Administração</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

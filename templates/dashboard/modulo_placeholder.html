@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Módulo em evolução</p>
+        <h2 class="h3 mb-2">{{ titulo }}</h2>
+        <p class="text-secondary mb-0">{{ descricao }}</p>
+    </div>
+    <button class="btn btn-primary" type="button" disabled>{{ acao_principal }}</button>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="placeholder-panel">
+                    <h3 class="h6">Próxima etapa sugerida</h3>
+                    <p class="mb-0 text-secondary">Conectar formulários, views class-based, APIs REST e permissões granulares por perfil.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="placeholder-panel">
+                    <h3 class="h6">Padrão adotado</h3>
+                    <p class="mb-0 text-secondary">Cada domínio terá CRUD, relatórios, serializers, testes e trilhas de auditoria respeitando campanha e consentimento.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

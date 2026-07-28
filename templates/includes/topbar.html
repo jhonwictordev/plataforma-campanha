@@ -1,0 +1,23 @@
+<header class="topbar">
+    <div>
+        <p class="eyebrow mb-1">Operação eleitoral</p>
+        <h1 class="h4 mb-0">{{ nome_aplicacao }}</h1>
+    </div>
+    <div class="topbar-actions">
+        <button class="btn btn-outline-secondary" type="button" data-tema-toggle>
+            <i class="bi bi-circle-half"></i>
+            Tema
+        </button>
+        <a class="btn btn-outline-primary" href="{% url 'usuarios:perfil' %}">
+            <i class="bi bi-person-circle"></i>
+            {{ request.user.nome_primeiro }}
+        </a>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="btn btn-dark-subtle" type="submit">
+                <i class="bi bi-box-arrow-right"></i>
+                Sair
+            </button>
+        </form>
+    </div>
+</header>
