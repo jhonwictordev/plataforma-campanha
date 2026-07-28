@@ -12,6 +12,7 @@ from auditoria.models import LogSeguranca
 from core.api import ViewSetCampanhaProtegido
 from core.permissions import PAPEIS_COORDENACAO
 from usuarios.models import Usuario
+from usuarios.policies import usuario_admin_sistema
 from usuarios.serializers import (
     AlterarSenhaSerializer,
     PerfilUsuarioSerializer,

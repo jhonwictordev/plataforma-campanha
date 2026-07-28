@@ -8,19 +8,11 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from auditoria.models import LogSeguranca
 from campanhas.models import Campanha
 from usuarios.models import Usuario
-
-PAPEIS_GERENCIAVEIS_COORDENADOR_GERAL = (
-    Usuario.NiveisAcesso.COORDENADOR_REGIONAL,
-    Usuario.NiveisAcesso.FINANCEIRO,
-    Usuario.NiveisAcesso.COMUNICACAO,
-    Usuario.NiveisAcesso.MOBILIZADOR,
-    Usuario.NiveisAcesso.VOLUNTARIO,
-    Usuario.NiveisAcesso.VISUALIZADOR,
+from usuarios.policies import (
+    PAPEIS_GERENCIAVEIS_GESTOR_LOCAL,
+    papeis_gerenciaveis_por_usuario,
+    usuario_admin_sistema,
 )
-
-
-def usuario_admin(usuario: Usuario) -> bool:
-    return bool(usuario.is_superuser or getattr(usuario, "is_staff", False))
 
 
 class UsuarioResumoSerializer(serializers.ModelSerializer):
@@ -123,7 +115,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         nivel_acesso = attrs.get("nivel_acesso", getattr(self.instance, "nivel_acesso", Usuario.NiveisAcesso.VISUALIZADOR))
         is_active = attrs.get("is_active", getattr(self.instance, "is_active", True))
 
-        if usuario_admin(usuario_logado):
+        if usuario_admin_sistema(usuario_logado):
             return attrs
 
         if not usuario_logado.campanha_id:
@@ -132,7 +124,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
         if campanha and campanha.id != usuario_logado.campanha_id:
             raise serializers.ValidationError({"campanha": "Nao e permitido vincular usuarios a outra campanha."})
 
-        if nivel_acesso not in PAPEIS_GERENCIAVEIS_COORDENADOR_GERAL:
+        if nivel_acesso not in papeis_gerenciaveis_por_usuario(usuario_logado):
             raise serializers.ValidationError(
                 {"nivel_acesso": "Coordenadores-gerais so podem gerenciar perfis operacionais da propria campanha."}
             )

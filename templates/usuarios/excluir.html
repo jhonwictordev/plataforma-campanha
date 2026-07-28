@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <p class="eyebrow mb-1">Controle de acesso</p>
+                <h2 class="h4 mb-3">Desativar usuario</h2>
+                <p class="text-secondary">
+                    O acesso de <strong>{{ object.nome_completo }}</strong> sera desativado.
+                    O historico permanece preservado para auditoria e o cadastro podera ser reativado posteriormente.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-danger" type="submit">Desativar usuario</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'usuarios:detalhe' object.pk %}">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

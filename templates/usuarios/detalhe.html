@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Seguranca e acesso</p>
+        <h2 class="h3 mb-0">{{ usuario_alvo.nome_completo }}</h2>
+        <p class="text-secondary mb-0">{{ usuario_alvo.email }} - {{ usuario_alvo.get_nivel_acesso_display }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'usuarios:lista' %}">Voltar</a>
+        {% if pode_editar %}
+            <a class="btn btn-outline-primary" href="{% url 'usuarios:editar' usuario_alvo.pk %}">Editar</a>
+            {% if usuario_alvo.is_active %}
+                <a class="btn btn-outline-danger" href="{% url 'usuarios:excluir' usuario_alvo.pk %}">Desativar</a>
+            {% endif %}
+        {% else %}
+            <a class="btn btn-outline-primary" href="{% url 'usuarios:perfil' %}">Abrir meu perfil</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Status</div>
+                <div class="fw-semibold">{% if usuario_alvo.is_active %}Ativo{% else %}Inativo{% endif %}</div>
+                <div class="small text-secondary mt-3">Campanha</div>
+                <div class="fw-semibold">{{ usuario_alvo.campanha.nome_campanha|default:"Sem campanha" }}</div>
+                <div class="small text-secondary mt-3">Telefone</div>
+                <div class="fw-semibold">{{ usuario_alvo.telefone|default:"Nao informado" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Autenticacao</div>
+                <div class="fw-semibold">
+                    {% if resumo_seguranca.dois_fatores %}2FA habilitado{% else %}2FA opcional nao habilitado{% endif %}
+                </div>
+                <div class="small text-secondary mt-3">Ultimo acesso registrado</div>
+                <div class="fw-semibold">
+                    {% if resumo_seguranca.ultimo_acesso %}
+                        {{ resumo_seguranca.ultimo_acesso|date:"d/m/Y H:i" }}
+                    {% else %}
+                        Nunca registrado
+                    {% endif %}
+                </div>
+                <div class="small text-secondary mt-3">Tentativas falhas</div>
+                <div class="fw-semibold">{{ resumo_seguranca.tentativas_falhas }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Preferencias</div>
+                <div class="fw-semibold">{% if usuario_alvo.tema_escuro %}Tema escuro habilitado{% else %}Tema claro{% endif %}</div>
+                <div class="small text-secondary mt-3">Privacidade</div>
+                <div class="fw-semibold">
+                    {% if usuario_alvo.consentimento_privacidade %}Consentimento registrado{% else %}Sem consentimento registrado{% endif %}
+                </div>
+                <div class="small text-secondary mt-3">Criado em</div>
+                <div class="fw-semibold">{{ usuario_alvo.criado_em|date:"d/m/Y H:i" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Dados do usuario</h3>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Nome de exibicao</dt>
+                    <dd class="col-sm-8">{{ usuario_alvo.nome_exibicao|default:"Nao definido" }}</dd>
+                    <dt class="col-sm-4">E-mail</dt>
+                    <dd class="col-sm-8">{{ usuario_alvo.email }}</dd>
+                    <dt class="col-sm-4">Perfil</dt>
+                    <dd class="col-sm-8">{{ usuario_alvo.get_nivel_acesso_display }}</dd>
+                    <dt class="col-sm-4">Ultimo IP</dt>
+                    <dd class="col-sm-8">{{ usuario_alvo.ultimo_ip|default:"Nao registrado" }}</dd>
+                    <dt class="col-sm-4">Ultimo login</dt>
+                    <dd class="col-sm-8">
+                        {% if usuario_alvo.last_login %}
+                            {{ usuario_alvo.last_login|date:"d/m/Y H:i" }}
+                        {% else %}
+                            Nunca
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Ultimos logs de seguranca</h3>
+                <div class="d-grid gap-3">
+                    {% for log in ultimos_logs %}
+                        <div class="border rounded-3 p-3">
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <strong>{{ log.evento }}</strong>
+                                <span class="small text-secondary">{{ log.criado_em|date:"d/m/Y H:i" }}</span>
+                            </div>
+                            <div class="small text-secondary text-uppercase mt-1">{{ log.severidade }}</div>
+                            <p class="mb-0 mt-2">{{ log.descricao }}</p>
+                        </div>
+                    {% empty %}
+                        <div class="text-secondary">Ainda nao ha logs de seguranca vinculados a este usuario.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

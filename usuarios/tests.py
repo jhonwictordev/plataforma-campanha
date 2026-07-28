@@ -361,3 +361,155 @@ class UsuariosAPITestCase(TestCase):
             Usuario.objects.get(email="regional.staff@example.com").campanha_id,
             self.campanha_a.id,
         )
+
+
+class UsuariosWebTestCase(TestCase):
+    def setUp(self):
+        self.campanha_a = Campanha.objects.create(
+            nome_campanha="Campanha Web A",
+            nome_candidato="Candidata Web A",
+            cargo_disputado="prefeito",
+            partido="AAA",
+            numero_candidato="13",
+            estado="CE",
+            municipio="Fortaleza",
+            data_inicio="2026-07-01",
+            data_eleicao="2026-10-04",
+            situacao="ativa",
+        )
+        self.campanha_b = Campanha.objects.create(
+            nome_campanha="Campanha Web B",
+            nome_candidato="Candidato Web B",
+            cargo_disputado="vereador",
+            partido="BBB",
+            numero_candidato="23",
+            estado="CE",
+            municipio="Caucaia",
+            data_inicio="2026-07-01",
+            data_eleicao="2026-10-04",
+            situacao="ativa",
+        )
+        self.coordenador_geral = Usuario.objects.create_user(
+            email="coord.web@example.com",
+            password="SenhaSegura2026!",
+            nome_completo="Coordenador Web",
+            campanha=self.campanha_a,
+            nivel_acesso=Usuario.NiveisAcesso.COORDENADOR_GERAL,
+        )
+        self.visualizador = Usuario.objects.create_user(
+            email="visualizador.web@example.com",
+            password="SenhaSegura2026!",
+            nome_completo="Visualizador Web",
+            campanha=self.campanha_a,
+            nivel_acesso=Usuario.NiveisAcesso.VISUALIZADOR,
+        )
+        self.usuario_mesma_campanha = Usuario.objects.create_user(
+            email="operacional.web@example.com",
+            password="SenhaSegura2026!",
+            nome_completo="Operacional Web",
+            campanha=self.campanha_a,
+            nivel_acesso=Usuario.NiveisAcesso.MOBILIZADOR,
+        )
+        self.usuario_outra_campanha = Usuario.objects.create_user(
+            email="outra.web@example.com",
+            password="SenhaSegura2026!",
+            nome_completo="Outra Campanha Web",
+            campanha=self.campanha_b,
+            nivel_acesso=Usuario.NiveisAcesso.MOBILIZADOR,
+        )
+        self.staff = Usuario.objects.create_user(
+            email="staff.web@example.com",
+            password="SenhaSegura2026!",
+            nome_completo="Staff Web",
+            campanha=self.campanha_b,
+            nivel_acesso=Usuario.NiveisAcesso.ADMINISTRADOR,
+            is_staff=True,
+        )
+
+    def test_web_lista_isola_usuarios_da_mesma_campanha(self):
+        self.client.force_login(self.coordenador_geral)
+
+        resposta = self.client.get(reverse("usuarios:lista"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Operacional Web")
+        self.assertNotContains(resposta, "Outra Campanha Web")
+
+    def test_web_visualizador_nao_acessa_gestao_usuarios(self):
+        self.client.force_login(self.visualizador)
+
+        resposta = self.client.get(reverse("usuarios:lista"))
+
+        self.assertEqual(resposta.status_code, 403)
+
+    def test_web_detalhe_bloqueia_usuario_de_outra_campanha(self):
+        self.client.force_login(self.coordenador_geral)
+
+        resposta = self.client.get(reverse("usuarios:detalhe", args=[self.usuario_outra_campanha.pk]))
+
+        self.assertEqual(resposta.status_code, 404)
+
+    def test_web_coordenador_geral_cria_usuario_operacional(self):
+        self.client.force_login(self.coordenador_geral)
+
+        resposta = self.client.post(
+            reverse("usuarios:novo"),
+            {
+                "email": "financeiro.web@example.com",
+                "nome_completo": "Financeiro Web",
+                "campanha": str(self.campanha_a.pk),
+                "nivel_acesso": Usuario.NiveisAcesso.FINANCEIRO,
+                "password1": "SenhaInicial2026@",
+                "password2": "SenhaInicial2026@",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        novo_usuario = Usuario.objects.get(email="financeiro.web@example.com")
+        self.assertEqual(novo_usuario.campanha_id, self.campanha_a.id)
+        self.assertEqual(novo_usuario.nivel_acesso, Usuario.NiveisAcesso.FINANCEIRO)
+
+    def test_web_bloqueia_criacao_de_administrador_por_coordenador_geral(self):
+        self.client.force_login(self.coordenador_geral)
+
+        resposta = self.client.post(
+            reverse("usuarios:novo"),
+            {
+                "email": "admin.web@example.com",
+                "nome_completo": "Admin Web",
+                "campanha": str(self.campanha_a.pk),
+                "nivel_acesso": Usuario.NiveisAcesso.ADMINISTRADOR,
+                "password1": "SenhaInicial2026@",
+                "password2": "SenhaInicial2026@",
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("nivel_acesso", resposta.context["form"].errors)
+        self.assertFalse(Usuario.objects.filter(email="admin.web@example.com").exists())
+
+    def test_web_redireciona_autoedicao_para_perfil(self):
+        self.client.force_login(self.coordenador_geral)
+
+        resposta = self.client.get(reverse("usuarios:editar", args=[self.coordenador_geral.pk]))
+
+        self.assertRedirects(resposta, reverse("usuarios:perfil"), fetch_redirect_response=False)
+
+    def test_web_desativa_usuario_sem_excluir_cadastro(self):
+        self.client.force_login(self.coordenador_geral)
+
+        resposta = self.client.post(reverse("usuarios:excluir", args=[self.usuario_mesma_campanha.pk]), follow=True)
+
+        self.assertEqual(resposta.status_code, 200)
+        self.usuario_mesma_campanha.refresh_from_db()
+        self.assertFalse(self.usuario_mesma_campanha.is_active)
+
+    def test_web_staff_filtra_por_campanha(self):
+        self.client.force_login(self.staff)
+
+        resposta = self.client.get(reverse("usuarios:lista"), {"campanha": str(self.campanha_a.pk)})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Operacional Web")
+        self.assertNotContains(resposta, "Staff Web")

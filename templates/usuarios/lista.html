@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Governanca de acesso</p>
+        <h2 class="h3 mb-0">Usuarios da operacao</h2>
+        <p class="text-secondary mb-0">Controle perfis, campanhas vinculadas, status e seguranca de acesso.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'usuarios:perfil' %}">Meu perfil</a>
+        <a class="btn btn-primary" href="{% url 'usuarios:novo' %}">
+            <i class="bi bi-person-plus"></i>
+            Novo usuario
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Total monitorado</div>
+                <div class="display-6 fw-semibold">{{ resumo.total }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Usuarios ativos</div>
+                <div class="display-6 fw-semibold">{{ resumo.ativos }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">2FA habilitado</div>
+                <div class="display-6 fw-semibold">{{ resumo.com_2fa }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Inativos</div>
+                <div class="display-6 fw-semibold">{{ resumo.inativos }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form class="row g-3" method="get">
+            <div class="col-lg-4">
+                <label class="form-label" for="id_q">Busca</label>
+                <input class="form-control" id="id_q" type="text" name="q" value="{{ filtros.q }}" placeholder="Nome, e-mail ou telefone">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="id_nivel_acesso">Perfil</label>
+                <select class="form-select" id="id_nivel_acesso" name="nivel_acesso">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in niveis_acesso %}
+                        <option value="{{ valor }}" {% if filtros.nivel_acesso == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="id_status">Status</label>
+                <select class="form-select" id="id_status" name="status">
+                    <option value="">Todos</option>
+                    <option value="ativos" {% if filtros.status == "ativos" %}selected{% endif %}>Ativos</option>
+                    <option value="inativos" {% if filtros.status == "inativos" %}selected{% endif %}>Inativos</option>
+                </select>
+            </div>
+            {% if pode_gerir_multicampanha %}
+                <div class="col-md-3">
+                    <label class="form-label" for="id_campanha">Campanha</label>
+                    <select class="form-select" id="id_campanha" name="campanha">
+                        <option value="">Todas</option>
+                        {% for campanha in campanhas_disponiveis %}
+                            <option value="{{ campanha.pk }}" {% if filtros.campanha == campanha.pk|stringformat:"s" %}selected{% endif %}>{{ campanha.nome_campanha }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button class="btn btn-primary w-100" type="submit">Filtrar</button>
+                <a class="btn btn-outline-secondary" href="{% url 'usuarios:lista' %}">Limpar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Perfil</th>
+                    <th>Campanha</th>
+                    <th>Seguranca</th>
+                    <th>Status</th>
+                    <th class="text-end">Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario_alvo in usuarios %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">{{ usuario_alvo.nome_completo }}</div>
+                            <div class="small text-secondary">{{ usuario_alvo.email }}</div>
+                        </td>
+                        <td>{{ usuario_alvo.get_nivel_acesso_display }}</td>
+                        <td>{{ usuario_alvo.campanha.nome_campanha|default:"Sem campanha" }}</td>
+                        <td>
+                            <div class="small {% if usuario_alvo.dois_fatores_habilitado %}text-success{% else %}text-secondary{% endif %}">
+                                2FA {% if usuario_alvo.dois_fatores_habilitado %}ativo{% else %}desativado{% endif %}
+                            </div>
+                            <div class="small text-secondary">
+                                Ultimo acesso:
+                                {% if usuario_alvo.ultimo_acesso_registrado %}
+                                    {{ usuario_alvo.ultimo_acesso_registrado|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    nunca registrado
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if usuario_alvo.is_active %}
+                                <span class="badge text-bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a class="btn btn-outline-secondary" href="{% url 'usuarios:detalhe' usuario_alvo.pk %}">Detalhes</a>
+                                {% if usuario_alvo.pk != request.user.pk %}
+                                    <a class="btn btn-outline-primary" href="{% url 'usuarios:editar' usuario_alvo.pk %}">Editar</a>
+                                    {% if usuario_alvo.is_active %}
+                                        <a class="btn btn-outline-danger" href="{% url 'usuarios:excluir' usuario_alvo.pk %}">Desativar</a>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-secondary">Nenhum usuario encontrado com os filtros atuais.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+    <nav aria-label="Paginacao de usuarios" class="mt-4">
+        <ul class="pagination mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ filtros.q }}&nivel_acesso={{ filtros.nivel_acesso }}&status={{ filtros.status }}&campanha={{ filtros.campanha }}">Anterior</a>
+                </li>
+            {% endif %}
+            <li class="page-item active">
+                <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ filtros.q }}&nivel_acesso={{ filtros.nivel_acesso }}&status={{ filtros.status }}&campanha={{ filtros.campanha }}">Proxima</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}
