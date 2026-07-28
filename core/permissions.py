@@ -37,6 +37,14 @@ PAPEIS_AGENDA = (
     "voluntario",
     "visualizador",
 )
+PAPEIS_AGENDA_LEITURA = PAPEIS_AGENDA
+PAPEIS_AGENDA_ESCRITA = (
+    "administrador",
+    "coordenador_geral",
+    "coordenador_regional",
+    "comunicacao",
+    "mobilizador",
+)
 PAPEIS_EQUIPE = (
     "administrador",
     "coordenador_geral",

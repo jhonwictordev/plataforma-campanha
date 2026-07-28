@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Operacao de campo</p>
+        <h2 class="h3 mb-1">{{ titulo }}</h2>
+        <p class="text-secondary mb-0">{{ descricao }}</p>
+    </div>
+    {% if pode_editar %}
+        <a class="btn btn-primary" href="{% url 'agenda:novo' %}">
+            <i class="bi bi-calendar-plus"></i>
+            Novo evento
+        </a>
+    {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Eventos no periodo</div>
+                <div class="display-6 fw-semibold">{{ resumo.total }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Confirmados</div>
+                <div class="display-6 fw-semibold text-success">{{ resumo.confirmados }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">No dia de hoje</div>
+                <div class="display-6 fw-semibold text-primary">{{ resumo.hoje }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Pendentes atrasados</div>
+                <div class="display-6 fw-semibold text-danger">{{ resumo.pendentes }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-lg-2">
+                <label class="form-label">Visao</label>
+                <select class="form-select" name="visao">
+                    <option value="dia" {% if visao == "dia" %}selected{% endif %}>Dia</option>
+                    <option value="semana" {% if visao == "semana" %}selected{% endif %}>Semana</option>
+                    <option value="mes" {% if visao == "mes" %}selected{% endif %}>Mes</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Referencia</label>
+                <input type="date" class="form-control" name="referencia" value="{{ referencia }}">
+            </div>
+            <div class="col-lg-3">
+                <label class="form-label">Busca</label>
+                <input type="text" class="form-control" name="busca" value="{{ filtros.busca }}" placeholder="Titulo, descricao ou endereco">
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Tipo</label>
+                <select class="form-select" name="tipo">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in tipo_opcoes %}
+                        <option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in status_opcoes %}
+                        <option value="{{ valor }}" {% if filtros.status == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-1 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" type="submit">Filtrar</button>
+            </div>
+            <div class="col-lg-3">
+                <label class="form-label">Responsavel</label>
+                <select class="form-select" name="responsavel">
+                    <option value="">Todos</option>
+                    {% for responsavel in responsaveis %}
+                        <option value="{{ responsavel.pk }}" {% if filtros.responsavel == responsavel.pk|stringformat:"s" %}selected{% endif %}>{{ responsavel.nome_completo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-9 d-flex align-items-end">
+                <div class="small text-secondary">
+                    Periodo selecionado: <strong>{{ periodo_inicial|date:"d/m/Y" }}</strong> ate <strong>{{ periodo_final|date:"d/m/Y" }}</strong>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="d-grid gap-3">
+    {% for evento in eventos %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                    <div>
+                        <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                            <span class="badge text-bg-primary">{{ evento.get_tipo_display }}</span>
+                            <span class="badge text-bg-light">{{ evento.get_status_display }}</span>
+                            {% if evento.pk|stringformat:"s" in eventos_com_conflito_ids %}
+                                <span class="badge text-bg-danger">Conflito detectado</span>
+                            {% endif %}
+                        </div>
+                        <h3 class="h5 mb-1">{{ evento.titulo }}</h3>
+                        <p class="text-secondary mb-2">{{ evento.data|date:"d/m/Y" }}{% if evento.horario_inicial %} - {{ evento.horario_inicial|time:"H:i" }}{% endif %}{% if evento.horario_final %} ate {{ evento.horario_final|time:"H:i" }}{% endif %}</p>
+                        <div class="small text-secondary">
+                            {% if evento.endereco %}{{ evento.endereco }}{% else %}Endereco nao informado{% endif %}
+                            {% if evento.responsavel %} • Responsavel: {{ evento.responsavel.nome_completo }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:detalhe' evento.pk %}">Ver</a>
+                        {% if pode_editar %}
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:editar' evento.pk %}">Editar</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if evento.descricao %}
+                    <p class="mb-0 mt-3">{{ evento.descricao }}</p>
+                {% endif %}
+            </div>
+        </div>
+    {% empty %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-5 text-center text-secondary">
+                Nenhum evento encontrado para os filtros informados.
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{% if is_paginated %}
+    <nav class="mt-4" aria-label="Paginacao da agenda">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&visao={{ visao }}&referencia={{ referencia }}&busca={{ filtros.busca }}&tipo={{ filtros.tipo }}&status={{ filtros.status }}&responsavel={{ filtros.responsavel }}">Anterior</a>
+                </li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&visao={{ visao }}&referencia={{ referencia }}&busca={{ filtros.busca }}&tipo={{ filtros.tipo }}&status={{ filtros.status }}&responsavel={{ filtros.responsavel }}">Proxima</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}

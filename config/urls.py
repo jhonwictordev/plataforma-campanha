@@ -6,10 +6,12 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
+from agenda.api_views import EventoAgendaViewSet
 from eleitores.api_views import ContatoCRMViewSet
 from liderancas.api_views import LiderancaViewSet
 
 api_router = DefaultRouter()
+api_router.register("agenda-eventos", EventoAgendaViewSet, basename="api-agenda-eventos")
 api_router.register("contatos", ContatoCRMViewSet, basename="api-contatos")
 api_router.register("liderancas", LiderancaViewSet, basename="api-liderancas")
 

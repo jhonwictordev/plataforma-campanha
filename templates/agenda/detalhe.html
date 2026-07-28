@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Agenda da campanha</p>
+        <h2 class="h3 mb-1">{{ evento.titulo }}</h2>
+        <p class="text-secondary mb-0">{{ evento.data|date:"d/m/Y" }}{% if evento.horario_inicial %} • {{ evento.horario_inicial|time:"H:i" }}{% endif %}{% if evento.horario_final %} ate {{ evento.horario_final|time:"H:i" }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'agenda:home' %}">Voltar</a>
+        {% if pode_editar %}
+            <a class="btn btn-primary" href="{% url 'agenda:editar' evento.pk %}">Editar</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Dados do evento</h3>
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Tipo</strong><div>{{ evento.get_tipo_display }}</div></div>
+                    <div class="col-md-6"><strong>Status</strong><div>{{ evento.get_status_display }}</div></div>
+                    <div class="col-md-6"><strong>Prioridade</strong><div>{{ evento.prioridade|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Responsavel</strong><div>{{ evento.responsavel|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Endereco</strong><div>{{ evento.endereco|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Descricao</strong><div>{{ evento.descricao|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Observacoes</strong><div>{{ evento.observacoes|default:"-" }}</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Checklist</h3>
+                <ul class="mb-0">
+                    {% for item in evento.checklist %}
+                        <li>{{ item }}</li>
+                    {% empty %}
+                        <li class="text-secondary">Nenhum item cadastrado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Participacao</h3>
+                <div class="mb-3">
+                    <strong class="d-block mb-2">Participantes</strong>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for participante in evento.participantes.all %}
+                            <span class="badge text-bg-light">{{ participante.nome_completo }}</span>
+                        {% empty %}
+                            <span class="text-secondary small">Sem participantes adicionais.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <strong class="d-block mb-2">Liderancas convidadas</strong>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for lideranca in evento.liderancas_convidadas.all %}
+                            <span class="badge text-bg-light">{{ lideranca.nome_conhecido|default:lideranca.nome_completo }}</span>
+                        {% empty %}
+                            <span class="text-secondary small">Nenhuma lideranca vinculada.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Conflitos de agenda</h3>
+                <ul class="mb-0">
+                    {% for conflito in eventos_conflitantes %}
+                        <li>
+                            <a href="{% url 'agenda:detalhe' conflito.pk %}">{{ conflito.titulo }}</a>
+                            <span class="text-secondary">- {{ conflito.data|date:"d/m/Y" }} {{ conflito.horario_inicial|time:"H:i" }}</span>
+                        </li>
+                    {% empty %}
+                        <li class="text-secondary">Nenhum conflito detectado para este evento.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

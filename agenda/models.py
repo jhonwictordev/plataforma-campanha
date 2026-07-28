@@ -54,3 +54,6 @@ class EventoAgenda(ModeloCampanha):
         verbose_name = "Evento de agenda"
         verbose_name_plural = "Eventos de agenda"
         indexes = [models.Index(fields=["data", "status"]), models.Index(fields=["tipo"])]
+
+    def __str__(self):
+        return f"{self.titulo} - {self.data:%d/%m/%Y}"
