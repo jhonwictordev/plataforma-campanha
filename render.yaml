@@ -12,20 +12,20 @@ services:
     name: plataforma-campanha-web
     runtime: python
     plan: free
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: commit
     buildCommand: sh scripts/build.sh
     preDeployCommand: sh scripts/predeploy-demo.sh
     startCommand: sh scripts/start-web.sh
     healthCheckPath: /saude/prontidao/
     envVars:
       - key: PYTHON_VERSION
-        value: 3.12.4
+        value: "3.12.4"
       - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.production
+        value: "config.settings.production"
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
-        sync: false
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: plataforma-campanha-db
@@ -54,24 +54,10 @@ services:
       - key: HEALTHCHECK_VERIFY_REDIS
         value: "True"
       - key: EMAIL_BACKEND
-        value: django.core.mail.backends.console.EmailBackend
+        value: "django.core.mail.backends.console.EmailBackend"
       - key: ALLOWED_HOSTS
-        value: .onrender.com
+        value: ".onrender.com"
       - key: CSRF_TRUSTED_ORIGINS
-        value: https://*.onrender.com
+        value: "https://*.onrender.com"
       - key: DEFAULT_FROM_EMAIL
-        value: nao-responda@plataformacampanha.local
-      - key: WHATSAPP_OFFICIAL_API_URL
-        value: ""
-      - key: WHATSAPP_OFFICIAL_API_TOKEN
-        sync: false
-      - key: WHATSAPP_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
-      - key: SMS_OFFICIAL_API_URL
-        sync: false
-      - key: SMS_OFFICIAL_API_TOKEN
-        sync: false
-      - key: SMS_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
-      - key: EMAIL_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
+        value: "nao-responda@plataformacampanha.local"

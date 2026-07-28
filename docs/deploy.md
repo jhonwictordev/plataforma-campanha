@@ -162,7 +162,7 @@ O repositorio inclui um `render.yaml` pronto para Blueprint gratuito de demonstr
 
 Esse modo nao cria workers Celery porque background workers no Render sao pagos. O codigo continua preparado para Celery e Redis, mas comunicacoes e rotinas periodicas nao serao processadas continuamente no ambiente gratuito.
 
-Antes da primeira sincronizacao, preencha manualmente apenas as variaveis marcadas com `sync: false`, principalmente `SECRET_KEY`. `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e cookies seguros ja ficam configurados para subdominios `.onrender.com` no blueprint gratuito.
+No Blueprint gratuito, o Render gera `SECRET_KEY` automaticamente com `generateValue: true`. `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e cookies seguros ja ficam configurados para subdominios `.onrender.com`.
 O blueprint usa scripts versionados em `scripts/` para build, predeploy e start, reduzindo divergencia entre ambiente local, Docker e Render.
 
 Link direto para criar o Blueprint no Render:

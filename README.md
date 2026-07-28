@@ -232,7 +232,7 @@ O repositorio tambem inclui:
 - `.github/workflows/ci.yml` para checks e testes automaticos no GitHub
 - `scripts/build.sh`, `scripts/predeploy.sh`, `scripts/start-web.sh`, `scripts/start-worker.sh` e `scripts/start-beat.sh` para padronizar build, release e inicializacao
 
-No fluxo gratuito do Render, preencha apenas a `SECRET_KEY` quando solicitada. `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` ja ficam definidos para `.onrender.com`.
+No fluxo gratuito do Render, `SECRET_KEY` e gerada automaticamente pelo provedor. `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` ja ficam definidos para `.onrender.com`.
 O predeploy gratuito executa `python manage.py verificar_implantacao` sem modo estrito para permitir demonstracao sem e-mail transacional real. Para producao completa com workers Celery, use `scripts/deploy_render_api.py --profile production-starter` ou configure web, worker e beat manualmente com os scripts existentes.
 
 Resumo rapido:
