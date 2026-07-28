@@ -8,11 +8,14 @@ from rest_framework.routers import DefaultRouter
 
 from agenda.api_views import EventoAgendaViewSet
 from eleitores.api_views import ContatoCRMViewSet
+from equipe.api_views import IntegranteEquipeViewSet, TarefaEquipeViewSet
 from liderancas.api_views import LiderancaViewSet
 
 api_router = DefaultRouter()
 api_router.register("agenda-eventos", EventoAgendaViewSet, basename="api-agenda-eventos")
 api_router.register("contatos", ContatoCRMViewSet, basename="api-contatos")
+api_router.register("equipe-integrantes", IntegranteEquipeViewSet, basename="api-equipe-integrantes")
+api_router.register("equipe-tarefas", TarefaEquipeViewSet, basename="api-equipe-tarefas")
 api_router.register("liderancas", LiderancaViewSet, basename="api-liderancas")
 
 urlpatterns = [

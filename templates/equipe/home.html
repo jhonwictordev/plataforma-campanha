@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Operacao de equipe</p>
+        <h2 class="h3 mb-1">{{ titulo }}</h2>
+        <p class="text-secondary mb-0">{{ descricao }}</p>
+    </div>
+    {% if pode_editar %}
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" href="{% url 'equipe:integrante_novo' %}">
+                <i class="bi bi-person-plus"></i>
+                Novo integrante
+            </a>
+            <a class="btn btn-primary" href="{% url 'equipe:tarefa_nova' %}">
+                <i class="bi bi-kanban"></i>
+                Nova tarefa
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Integrantes cadastrados</div>
+                <div class="display-6 fw-semibold">{{ resumo.integrantes_total }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Integrantes ativos</div>
+                <div class="display-6 fw-semibold text-success">{{ resumo.integrantes_ativos }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Tarefas em aberto</div>
+                <div class="display-6 fw-semibold text-primary">{{ resumo.tarefas_abertas }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Tarefas atrasadas</div>
+                <div class="display-6 fw-semibold text-danger">{{ resumo.tarefas_atrasadas }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-lg-3">
+                <label class="form-label">Busca</label>
+                <input type="text" class="form-control" name="busca" value="{{ filtros.busca }}" placeholder="Pessoa, funcao, titulo ou comentario">
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Departamento</label>
+                <select class="form-select" name="departamento">
+                    <option value="">Todos</option>
+                    {% for departamento in departamentos %}
+                        <option value="{{ departamento }}" {% if filtros.departamento == departamento %}selected{% endif %}>{{ departamento }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Status integrante</label>
+                <input type="text" class="form-control" name="status_integrante" value="{{ filtros.status_integrante }}" placeholder="ativo, ferias, etc">
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Status tarefa</label>
+                <select class="form-select" name="status_tarefa">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in status_tarefas %}
+                        <option value="{{ valor }}" {% if filtros.status_tarefa == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Responsavel</label>
+                <select class="form-select" name="responsavel">
+                    <option value="">Todos</option>
+                    {% for responsavel in responsaveis_tarefa %}
+                        <option value="{{ responsavel.pk }}" {% if filtros.responsavel == responsavel.pk|stringformat:"s" %}selected{% endif %}>{{ responsavel.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-1 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" type="submit">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h5 mb-0">Equipe</h3>
+                    <span class="small text-secondary">{{ integrantes|length }} integrante(s) no filtro atual</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Integrante</th>
+                                <th>Departamento</th>
+                                <th>Status</th>
+                                <th>Disponibilidade</th>
+                                <th>Responsavel direto</th>
+                                <th class="text-end">Acoes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for integrante in integrantes %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ integrante.nome }}</strong>
+                                        <div class="small text-secondary">{{ integrante.funcao }}{% if integrante.email %} • {{ integrante.email }}{% endif %}</div>
+                                    </td>
+                                    <td>{{ integrante.departamento }}{% if integrante.cidade_regiao %}<div class="small text-secondary">{{ integrante.cidade_regiao }}</div>{% endif %}</td>
+                                    <td><span class="badge text-bg-light">{{ integrante.status|default:"-" }}</span></td>
+                                    <td>{{ integrante.disponibilidade|default:"-" }}</td>
+                                    <td>{{ integrante.responsavel_direto|default:"-" }}</td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-primary" href="{% url 'equipe:integrante_detalhe' integrante.pk %}">Ver</a>
+                                        {% if pode_editar %}
+                                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'equipe:integrante_editar' integrante.pk %}">Editar</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-secondary">Nenhum integrante encontrado para os filtros atuais.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="h5 mb-1">Quadro Kanban</h3>
+        <p class="text-secondary mb-0">Acompanhe o fluxo de execucao da equipe por coluna.</p>
+    </div>
+    <span class="small text-secondary">{{ resumo.tarefas_concluidas }} tarefa(s) concluidas no filtro atual</span>
+</div>
+
+<div class="row g-3 align-items-start">
+    {% for coluna in colunas_kanban %}
+        <div class="col-xl col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 pt-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="h6 mb-0">{{ coluna.rotulo }}</h4>
+                        <span class="badge text-bg-light">{{ coluna.tarefas|length }}</span>
+                    </div>
+                </div>
+                <div class="card-body d-grid gap-3">
+                    {% for tarefa in coluna.tarefas %}
+                        <div class="border rounded-3 p-3 bg-body-tertiary">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <strong>{{ tarefa.titulo }}</strong>
+                                <span class="badge text-bg-primary">{{ tarefa.prioridade|default:"media" }}</span>
+                            </div>
+                            {% if tarefa.descricao %}
+                                <p class="small text-secondary mb-2">{{ tarefa.descricao|truncatechars:110 }}</p>
+                            {% endif %}
+                            <div class="small text-secondary mb-2">
+                                {% if tarefa.responsavel %}{{ tarefa.responsavel.nome }}{% else %}Sem responsavel{% endif %}
+                                {% if tarefa.prazo %} • Prazo: {{ tarefa.prazo|date:"d/m/Y H:i" }}{% endif %}
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'equipe:tarefa_detalhe' tarefa.pk %}">Ver</a>
+                                {% if pode_editar %}
+                                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'equipe:tarefa_editar' tarefa.pk %}">Editar</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-secondary small">Nenhuma tarefa nesta coluna.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

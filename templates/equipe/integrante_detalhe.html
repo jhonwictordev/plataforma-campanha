@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Equipe da campanha</p>
+        <h2 class="h3 mb-1">{{ integrante.nome }}</h2>
+        <p class="text-secondary mb-0">{{ integrante.funcao }} • {{ integrante.departamento }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'equipe:home' %}">Voltar</a>
+        {% if pode_editar %}
+            <a class="btn btn-primary" href="{% url 'equipe:integrante_editar' integrante.pk %}">Editar</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Dados principais</h3>
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Telefone</strong><div>{{ integrante.telefone|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>E-mail</strong><div>{{ integrante.email|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Cidade ou regiao</strong><div>{{ integrante.cidade_regiao|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Data de entrada</strong><div>{{ integrante.data_entrada|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Status</strong><div>{{ integrante.status|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Disponibilidade</strong><div>{{ integrante.disponibilidade|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Responsavel direto</strong><div>{{ integrante.responsavel_direto|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Usuario vinculado</strong><div>{{ integrante.usuario|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Observacoes</strong><div>{{ integrante.observacoes|default:"-" }}</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Tarefas recentes</h3>
+                <ul class="list-unstyled mb-0 d-grid gap-3">
+                    {% for tarefa in tarefas_relacionadas %}
+                        <li class="border rounded-3 p-3">
+                            <div class="d-flex justify-content-between gap-2">
+                                <strong>{{ tarefa.titulo }}</strong>
+                                <span class="badge text-bg-light">{{ tarefa.get_status_display }}</span>
+                            </div>
+                            <div class="small text-secondary mt-2">
+                                {% if tarefa.prazo %}Prazo: {{ tarefa.prazo|date:"d/m/Y H:i" }}{% else %}Sem prazo definido{% endif %}
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'equipe:tarefa_detalhe' tarefa.pk %}">Abrir tarefa</a>
+                        </li>
+                    {% empty %}
+                        <li class="text-secondary">Nenhuma tarefa vinculada a este integrante.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

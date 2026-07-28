@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Kanban da campanha</p>
+        <h2 class="h3 mb-1">{{ tarefa.titulo }}</h2>
+        <p class="text-secondary mb-0">{{ tarefa.get_status_display }}{% if tarefa.prazo %} • Prazo: {{ tarefa.prazo|date:"d/m/Y H:i" }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'equipe:home' %}">Voltar</a>
+        {% if pode_editar %}
+            <a class="btn btn-primary" href="{% url 'equipe:tarefa_editar' tarefa.pk %}">Editar</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Resumo da tarefa</h3>
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Responsavel</strong><div>{{ tarefa.responsavel|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Prioridade</strong><div>{{ tarefa.prioridade|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Status</strong><div>{{ tarefa.get_status_display }}</div></div>
+                    <div class="col-md-6"><strong>Criada em</strong><div>{{ tarefa.criado_em|date:"d/m/Y H:i" }}</div></div>
+                    <div class="col-12"><strong>Descricao</strong><div>{{ tarefa.descricao|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Comentarios</strong><div>{{ tarefa.comentarios|default:"-" }}</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Checklist</h3>
+                <ul class="mb-0">
+                    {% for item in tarefa.checklist %}
+                        <li>{{ item }}</li>
+                    {% empty %}
+                        <li class="text-secondary">Nenhum item de checklist informado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -60,3 +60,6 @@ class TarefaEquipe(ModeloCampanha):
     class Meta:
         verbose_name = "Tarefa de equipe"
         verbose_name_plural = "Tarefas de equipe"
+
+    def __str__(self):
+        return self.titulo

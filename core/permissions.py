@@ -52,6 +52,13 @@ PAPEIS_EQUIPE = (
     "mobilizador",
     "visualizador",
 )
+PAPEIS_EQUIPE_LEITURA = PAPEIS_EQUIPE
+PAPEIS_EQUIPE_ESCRITA = (
+    "administrador",
+    "coordenador_geral",
+    "coordenador_regional",
+    "mobilizador",
+)
 PAPEIS_FINANCEIRO = ("administrador", "coordenador_geral", "financeiro")
 PAPEIS_COMUNICACAO = ("administrador", "coordenador_geral", "coordenador_regional", "comunicacao")
 PAPEIS_AUDITORIA = ("administrador", "coordenador_geral")
