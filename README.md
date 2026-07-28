@@ -1,75 +1,93 @@
-# Plataforma de Campanha
+# Plataforma Campanha
 
-Sistema web modular para gestão de campanhas políticas com foco em operação territorial, relacionamento, metas, finanças, agenda, comunicação e governança de dados.
+Modular campaign management platform built for political teams. The project centralizes campaign operations, territory coordination, voter relationships, goals, finance, agenda, communication, and reporting in a single Django-based system.
 
-## Arquitetura inicial
+## Overview
 
-- `config`: settings por ambiente, URLs globais, WSGI/ASGI e Celery.
-- `core`: abstrações compartilhadas para soft delete, scoping por campanha, middleware e mixins.
-- `usuarios`: autenticação, perfil, papéis de acesso e vínculo do usuário à campanha.
-- `campanhas`: cadastro central da campanha e dados do candidato.
-- `liderancas`, `eleitores`, `agenda`, `equipe`, `metas`, `financeiro`, `comunicacao`, `dashboard`, `mapa_eleitoral`, `relatorios`, `auditoria`: domínios separados para evolução incremental.
+- Multi-domain architecture for campaign operations and data governance
+- Django REST API support with JWT authentication
+- PostgreSQL persistence with Redis and Celery for background jobs
+- API documentation through OpenAPI, Swagger, and ReDoc
+- Export support for spreadsheets and PDF reports
+- Security-focused production settings and environment handling
 
-## Estrutura de pastas
+## Main Domains
+
+- `campanhas`: campaign registration and candidate information
+- `usuarios`: authentication, profiles, roles, and campaign access
+- `liderancas`: local leadership and field coordination
+- `eleitores`: voter relationship and territory tracking
+- `agenda`: events, appointments, and scheduling
+- `equipe`: team structure and responsibilities
+- `metas`: performance goals and follow-up
+- `financeiro`: campaign financial control
+- `comunicacao`: communication workflows and messaging
+- `dashboard`: summary views and operational metrics
+- `mapa_eleitoral`: electoral territory mapping
+- `relatorios`: export and reporting flows
+- `auditoria`: change history and traceability
+
+## Stack
+
+- Django 5
+- Django REST Framework
+- Simple JWT
+- PostgreSQL
+- Redis
+- Celery
+- Bootstrap
+- Chart.js
+- WhiteNoise
+- Gunicorn
+
+## Project Structure
 
 ```text
 plataforma_campanha/
-├── agenda/
-├── auditoria/
-├── campanhas/
-├── comunicacao/
-├── config/
-│   ├── settings/
-│   ├── celery.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
-├── core/
-├── dashboard/
-├── eleitores/
-├── equipe/
-├── financeiro/
-├── liderancas/
-├── mapa_eleitoral/
-├── metas/
-├── relatorios/
-├── static/
-│   ├── css/
-│   └── js/
-├── templates/
-│   ├── campanhas/
-│   ├── dashboard/
-│   ├── includes/
-│   ├── registration/
-│   └── usuarios/
-├── usuarios/
-├── .env.example
-├── docker-compose.yml
-├── Dockerfile
-├── manage.py
-└── requirements.txt
+|-- agenda/
+|-- auditoria/
+|-- campanhas/
+|-- comunicacao/
+|-- config/
+|   |-- settings/
+|   |-- celery.py
+|   |-- urls.py
+|   |-- asgi.py
+|   `-- wsgi.py
+|-- core/
+|-- dashboard/
+|-- eleitores/
+|-- equipe/
+|-- financeiro/
+|-- liderancas/
+|-- mapa_eleitoral/
+|-- metas/
+|-- relatorios/
+|-- static/
+|   |-- css/
+|   `-- js/
+|-- templates/
+|   |-- campanhas/
+|   |-- dashboard/
+|   |-- includes/
+|   |-- registration/
+|   `-- usuarios/
+|-- usuarios/
+|-- .env.example
+|-- docker-compose.yml
+|-- Dockerfile
+|-- manage.py
+`-- requirements.txt
 ```
 
-## Requisitos
+## Requirements
 
 - Python 3.12+
 - PostgreSQL 15+
 - Redis 7+
-- Docker e Docker Compose
+- Docker and Docker Compose
 
-## Segurança básica do repositório
-
-- O arquivo `.env` não deve ser versionado.
-- O `.gitignore` cobre `.env` e variantes como `.env.local`, `.env.prod` e similares.
-- O build Docker ignora `.env`, `.git`, `.venv` e caches locais.
-- O arquivo `.env.example` contém apenas placeholders e nunca deve receber segredos reais.
-- Em produção, `SECRET_KEY` ausente interrompe a inicialização da aplicação.
-- Em produção, `DEBUG=False` é forçado por [config/settings/production.py](/C:/Users/jhon/Documents/New%20project/plataforma_campanha/config/settings/production.py).
-- `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` são validados em produção e exigem domínios/origens explícitos.
-- Cookies de sessão e CSRF usam `HttpOnly`, `SameSite=Lax` e, em produção, `Secure=True`.
-- PostgreSQL e Redis não são publicados para fora do Docker Compose.
-
-## Instalação local
+## Local Setup
 
 ```bash
 python -m venv .venv
@@ -77,30 +95,39 @@ python -m venv .venv
 pip install --upgrade pip
 pip install -r requirements.txt
 copy .env.example .env
-python manage.py makemigrations
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
 ```
 
-## Execução com Docker
+## Docker
 
 ```bash
 copy .env.example .env
 docker compose up --build
 ```
 
-## Serviços disponíveis
+## Available Services
 
-- Aplicação web: `http://localhost:8000`
-- Swagger/OpenAPI: `http://localhost:8000/api/docs/`
+- Web application: `http://localhost:8000`
+- Swagger / OpenAPI: `http://localhost:8000/api/docs/`
 - ReDoc: `http://localhost:8000/api/redoc/`
-- Admin Django: `http://localhost:8000/admin/`
+- Django admin: `http://localhost:8000/admin/`
 
-## Próximos passos sugeridos
+## Security Notes
 
-1. Gerar migrations reais com o ambiente Python configurado.
-2. Implementar CRUD completo e API REST de cada domínio.
-3. Adicionar testes automatizados por app.
-4. Criar carga de dados fictícios para demonstração.
-5. Configurar trilhas automáticas de auditoria com signals e middleware.
+- `.env` files must never be committed
+- `.env.example` contains placeholders only
+- Production startup requires a valid `SECRET_KEY`
+- Production settings enforce `DEBUG=False`
+- `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` must be explicitly configured in production
+- Session and CSRF cookies use secure settings in production
+- PostgreSQL and Redis are not exposed outside Docker Compose by default
+
+## Next Steps
+
+1. Expand CRUD and REST coverage for each domain
+2. Add automated tests per app
+3. Prepare demo seed data for presentations
+4. Extend audit workflows with signals and middleware
+5. Refine dashboards, reports, and operational analytics
