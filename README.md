@@ -1,46 +1,39 @@
 # Plataforma Campanha
 
-Modular campaign management platform built for political teams. The project centralizes campaign operations, territory coordination, voter relationships, goals, finance, agenda, communication, and reporting in a single Django-based system.
+Sistema web completo para gestao de campanhas politicas com Django, PostgreSQL, Bootstrap, Chart.js, Leaflet, Celery e Redis. O projeto centraliza CRM eleitoral, liderancas, agenda, equipe, metas, financeiro, comunicacao, dashboard, mapa territorial, relatorios e auditoria com foco em seguranca e LGPD.
 
-## Overview
+## Principais modulos
 
-- Multi-domain architecture for campaign operations and data governance
-- Django REST API support with JWT authentication
-- PostgreSQL persistence with Redis and Celery for background jobs
-- API documentation through OpenAPI, Swagger, and ReDoc
-- Export support for spreadsheets and PDF reports
-- Security-focused production settings and environment handling
-
-## Main Domains
-
-- `campanhas`: campaign registration and candidate information
-- `usuarios`: authentication, profiles, roles, and campaign access
-- `liderancas`: local leadership and field coordination
-- `eleitores`: voter relationship and territory tracking
-- `agenda`: events, appointments, and scheduling
-- `equipe`: team structure and responsibilities
-- `metas`: performance goals and follow-up
-- `financeiro`: campaign financial control
-- `comunicacao`: communication workflows and messaging
-- `dashboard`: summary views and operational metrics
-- `mapa_eleitoral`: electoral territory mapping
-- `relatorios`: export and reporting flows
-- `auditoria`: change history and traceability
+- `usuarios`: autenticacao, perfil, papeis e vinculo por campanha
+- `campanhas`: cadastro do candidato, dados eleitorais e configuracao da operacao
+- `liderancas`: liderancas territoriais e historico de relacionamento
+- `eleitores`: CRM de contatos, apoiadores, interacoes e tarefas de retorno
+- `agenda`: compromissos, eventos e conflitos de horario
+- `equipe`: integrantes, responsabilidades e quadro Kanban
+- `metas`: indicadores, progresso e acompanhamento por equipe
+- `financeiro`: receitas, despesas, parceiros, categorias e centros de custo
+- `comunicacao`: modelos, campanhas, envios, bloqueios e status
+- `dashboard`: visao executiva com graficos e indicadores
+- `mapa_eleitoral`: painel territorial com Leaflet e filtros por campanha
+- `relatorios`: filtros, exportacao PDF/Excel e favoritos
+- `auditoria`: trilha de alteracoes, logs de seguranca, retencao e demandas LGPD
 
 ## Stack
 
-- Django 5
+- Python 3.12+
+- Django
 - Django REST Framework
-- Simple JWT
 - PostgreSQL
 - Redis
 - Celery
-- Bootstrap
+- Bootstrap 5
 - Chart.js
-- WhiteNoise
+- Leaflet.js
 - Gunicorn
+- WhiteNoise
+- Docker e Docker Compose
 
-## Project Structure
+## Estrutura do projeto
 
 ```text
 plataforma_campanha/
@@ -55,7 +48,11 @@ plataforma_campanha/
 |   |-- asgi.py
 |   `-- wsgi.py
 |-- core/
+|   |-- management/
+|   |   `-- commands/
+|   `-- demo_seed.py
 |-- dashboard/
+|-- docs/
 |-- eleitores/
 |-- equipe/
 |-- financeiro/
@@ -64,14 +61,7 @@ plataforma_campanha/
 |-- metas/
 |-- relatorios/
 |-- static/
-|   |-- css/
-|   `-- js/
 |-- templates/
-|   |-- campanhas/
-|   |-- dashboard/
-|   |-- includes/
-|   |-- registration/
-|   `-- usuarios/
 |-- usuarios/
 |-- .env.example
 |-- docker-compose.yml
@@ -80,14 +70,7 @@ plataforma_campanha/
 `-- requirements.txt
 ```
 
-## Requirements
-
-- Python 3.12+
-- PostgreSQL 15+
-- Redis 7+
-- Docker and Docker Compose
-
-## Local Setup
+## Configuracao local
 
 ```bash
 python -m venv .venv
@@ -100,34 +83,83 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-## Docker
+## Execucao com Docker
 
 ```bash
 copy .env.example .env
 docker compose up --build
 ```
 
-## Available Services
+Servicos principais:
 
-- Web application: `http://localhost:8000`
-- Swagger / OpenAPI: `http://localhost:8000/api/docs/`
+- Aplicacao: `http://localhost:8000`
+- Admin Django: `http://localhost:8000/admin/`
+- Swagger: `http://localhost:8000/api/docs/`
 - ReDoc: `http://localhost:8000/api/redoc/`
-- Django admin: `http://localhost:8000/admin/`
 
-## Security Notes
+## Comandos operacionais
 
-- `.env` files must never be committed
-- `.env.example` contains placeholders only
-- Production startup requires a valid `SECRET_KEY`
-- Production settings enforce `DEBUG=False`
-- `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` must be explicitly configured in production
-- Session and CSRF cookies use secure settings in production
-- PostgreSQL and Redis are not exposed outside Docker Compose by default
+Popular o ambiente com dados ficticios para demonstracao, treinamento ou QA:
 
-## Next Steps
+```bash
+python manage.py popular_dados_demo --limpar
+```
 
-1. Expand CRUD and REST coverage for each domain
-2. Add automated tests per app
-3. Prepare demo seed data for presentations
-4. Extend audit workflows with signals and middleware
-5. Refine dashboards, reports, and operational analytics
+Exemplo com volume customizado:
+
+```bash
+python manage.py popular_dados_demo --campanhas 2 --contatos 15 --liderancas 8 --eventos 5
+```
+
+Gerar backup em JSON:
+
+```bash
+python manage.py backup_banco --formato json
+```
+
+Gerar backup SQL com PostgreSQL:
+
+```bash
+python manage.py backup_banco --formato sql
+```
+
+Todos os dados gerados por `popular_dados_demo` sao sinteticos e usam o dominio ficticio `@demo.plataformacampanha.local`. A senha padrao dos usuarios demo e `Demo2026!`.
+
+## Testes e validacao
+
+```bash
+python manage.py check
+python manage.py makemigrations --check --dry-run --noinput --settings=config.settings.test
+python manage.py test --settings=config.settings.test
+```
+
+## Seguranca
+
+- `.env` real deve permanecer fora do Git
+- `.env.example` contem apenas placeholders
+- `SECRET_KEY` e credenciais nunca devem ficar no codigo ou no `docker-compose.yml`
+- producao exige `DEBUG=False`
+- `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` precisam ser configurados explicitamente
+- cookies de sessao e CSRF usam configuracoes seguras no ambiente de producao
+- PostgreSQL e Redis nao ficam expostos publicamente pelo `docker-compose.yml`
+- o sistema usa trilha de auditoria, logs de seguranca, soft delete e isolamento por campanha
+
+## Deploy
+
+O passo a passo completo de implantacao esta em [docs/deploy.md](docs/deploy.md).
+
+Resumo rapido:
+
+```bash
+python manage.py migrate
+python manage.py collectstatic --noinput
+gunicorn config.wsgi:application --bind 127.0.0.1:8000
+celery -A config worker -l info
+celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+```
+
+## Observacoes finais
+
+- O sistema foi estruturado para separar dados por campanha e restringir acesso conforme o perfil do usuario.
+- Dados de contatos, liderancas e operacao devem ser usados com consentimento valido e finalidades legitimas.
+- Regras eleitorais, contabilizacao e retencao de dados podem variar; a validacao final deve contar com apoio juridico e contabil.
