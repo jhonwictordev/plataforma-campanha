@@ -1,3 +1,4 @@
+from django.core import mail
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -7,7 +8,7 @@ from campanhas.models import Campanha
 from eleitores.models import ContatoCRM
 
 from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
-from .services import sincronizar_envios_campanha
+from .services import processar_campanha_comunicacao, processar_campanhas_agendadas, sincronizar_envios_campanha
 
 Usuario = get_user_model()
 
@@ -315,3 +316,151 @@ class ComunicacaoPermissoesTestCase(TestCase):
         self.assertEqual(resposta.status_code, 200)
         notificacao.refresh_from_db()
         self.assertIsNotNone(notificacao.lida_em)
+
+    def test_processamento_email_envia_para_backend_oficial(self):
+        contato_email = ContatoCRM.objects.create(
+            campanha=self.campanha_a,
+            nome_completo="Contato Email",
+            telefone="85955550000",
+            email="contato-email@example.com",
+            cidade="Fortaleza",
+            status_funil=ContatoCRM.EtapasFunil.APOIADOR,
+            consentimento_comunicacao=True,
+            canal_autorizado="email",
+        )
+        modelo_email = ModeloMensagem.objects.create(
+            campanha=self.campanha_a,
+            nome="Modelo Email",
+            canal="email",
+            assunto="Assunto oficial",
+            conteudo="Mensagem de e-mail autorizada.",
+        )
+        campanha_email = CampanhaComunicacao.objects.create(
+            campanha=self.campanha_a,
+            nome="Campanha Email",
+            modelo_mensagem=modelo_email,
+            assunto="Assunto oficial",
+            conteudo="Mensagem de e-mail autorizada.",
+            canal="email",
+            data_envio="2026-07-28T09:00:00Z",
+            responsavel=self.usuario_comunicacao,
+            status=CampanhaComunicacao.Status.AGENDADA,
+        )
+        campanha_email.destinatarios.set([contato_email])
+        sincronizar_envios_campanha(
+            campanha_comunicacao=campanha_email,
+            destinatarios=campanha_email.destinatarios.all(),
+            usuario=self.usuario_comunicacao,
+        )
+
+        resultado = processar_campanha_comunicacao(campanha_email, forcar_execucao=True)
+
+        campanha_email.refresh_from_db()
+        envio = campanha_email.envios.get(contato=contato_email)
+        self.assertEqual(resultado["processados"], 1)
+        self.assertEqual(campanha_email.status, CampanhaComunicacao.Status.CONCLUIDA)
+        self.assertEqual(campanha_email.provedor_ultimo_envio, "email_django")
+        self.assertEqual(envio.status, EnvioComunicacao.Status.ENVIADO)
+        self.assertEqual(envio.tentativas_envio, 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["contato-email@example.com"])
+
+    def test_processamento_whatsapp_sem_integracao_pausa_campanha(self):
+        resultado = processar_campanha_comunicacao(self.campanha_comunicacao_a, forcar_execucao=True)
+        self.campanha_comunicacao_a.refresh_from_db()
+        self.assertEqual(resultado["status"], "pausada")
+        self.assertEqual(self.campanha_comunicacao_a.status, CampanhaComunicacao.Status.PAUSADA)
+        self.assertIn("integracao oficial", self.campanha_comunicacao_a.erro_ultima_execucao.lower())
+        self.assertTrue(
+            NotificacaoInterna.objects.filter(
+                campanha=self.campanha_a,
+                usuario_destinatario=self.usuario_comunicacao,
+                titulo__icontains="Campanha pausada",
+            ).exists()
+        )
+
+    def test_processar_campanhas_agendadas_considera_apenas_comunicacoes_vencidas(self):
+        resultado = processar_campanhas_agendadas()
+        self.assertEqual(resultado["campanhas"], 0)
+
+        self.campanha_comunicacao_a.data_envio = "2026-07-27T10:00:00Z"
+        self.campanha_comunicacao_a.save(update_fields=["data_envio", "atualizado_em"])
+        resultado = processar_campanhas_agendadas()
+        self.assertEqual(resultado["campanhas"], 1)
+        self.assertEqual(resultado["pausadas"], 1)
+
+    def test_execucao_manual_web_processa_campanha(self):
+        contato_email = ContatoCRM.objects.create(
+            campanha=self.campanha_a,
+            nome_completo="Contato Manual",
+            telefone="85966660000",
+            email="manual@example.com",
+            cidade="Fortaleza",
+            status_funil=ContatoCRM.EtapasFunil.APOIADOR,
+            consentimento_comunicacao=True,
+            canal_autorizado="email",
+        )
+        modelo_email = ModeloMensagem.objects.create(
+            campanha=self.campanha_a,
+            nome="Modelo Email Manual",
+            canal="email",
+            assunto="Manual",
+            conteudo="Disparo manual.",
+        )
+        campanha_email = CampanhaComunicacao.objects.create(
+            campanha=self.campanha_a,
+            nome="Campanha Manual",
+            modelo_mensagem=modelo_email,
+            assunto="Manual",
+            conteudo="Disparo manual.",
+            canal="email",
+            data_envio="2026-08-08T10:00:00Z",
+            responsavel=self.usuario_comunicacao,
+            status=CampanhaComunicacao.Status.AGENDADA,
+        )
+        campanha_email.destinatarios.set([contato_email])
+        sincronizar_envios_campanha(campanha_email, campanha_email.destinatarios.all(), usuario=self.usuario_comunicacao)
+
+        self.client.force_login(self.usuario_comunicacao)
+        resposta = self.client.post(reverse("comunicacao:campanha_executar", args=[campanha_email.pk]))
+        self.assertEqual(resposta.status_code, 302)
+        campanha_email.refresh_from_db()
+        self.assertEqual(campanha_email.status, CampanhaComunicacao.Status.CONCLUIDA)
+
+    def test_api_executa_campanha_manual(self):
+        contato_email = ContatoCRM.objects.create(
+            campanha=self.campanha_a,
+            nome_completo="Contato API",
+            telefone="85977770000",
+            email="api@example.com",
+            cidade="Fortaleza",
+            status_funil=ContatoCRM.EtapasFunil.APOIADOR,
+            consentimento_comunicacao=True,
+            canal_autorizado="email",
+        )
+        modelo_email = ModeloMensagem.objects.create(
+            campanha=self.campanha_a,
+            nome="Modelo Email API",
+            canal="email",
+            assunto="API",
+            conteudo="Disparo API.",
+        )
+        campanha_email = CampanhaComunicacao.objects.create(
+            campanha=self.campanha_a,
+            nome="Campanha API",
+            modelo_mensagem=modelo_email,
+            assunto="API",
+            conteudo="Disparo API.",
+            canal="email",
+            data_envio="2026-08-08T10:00:00Z",
+            responsavel=self.usuario_comunicacao,
+            status=CampanhaComunicacao.Status.AGENDADA,
+        )
+        campanha_email.destinatarios.set([contato_email])
+        sincronizar_envios_campanha(campanha_email, campanha_email.destinatarios.all(), usuario=self.usuario_comunicacao)
+
+        client = APIClient()
+        client.force_authenticate(self.usuario_comunicacao)
+        resposta = client.post(f"/api/v1/comunicacao-campanhas/{campanha_email.pk}/executar/", {}, format="json")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()["processamento"]["processados"], 1)

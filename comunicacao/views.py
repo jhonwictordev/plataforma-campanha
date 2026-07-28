@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
@@ -28,6 +29,7 @@ from .services import (
     contar_contatos_autorizados,
     listar_notificacoes_usuario,
     marcar_todas_notificacoes_como_lidas,
+    processar_campanha_comunicacao,
     registrar_descadastro,
     sincronizar_envios_campanha,
 )
@@ -218,6 +220,10 @@ class CampanhaComunicacaoDetailView(
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["pode_editar"] = usuario_tem_nivel(self.request.user, PAPEIS_COMUNICACAO_ESCRITA)
+        context["pode_executar_agora"] = context["pode_editar"] and self.object.status in [
+            CampanhaComunicacao.Status.AGENDADA,
+            CampanhaComunicacao.Status.PAUSADA,
+        ]
         context["envios"] = self.object.envios.select_related("contato", "responsavel_registro").order_by(
             "status",
             "data_programada",
@@ -254,6 +260,36 @@ class CampanhaComunicacaoUpdateView(
             usuario=self.request.user,
         )
         return response
+
+
+class CampanhaComunicacaoExecutarAgoraView(
+    LoginRequiredMixin,
+    NivelAcessoMixin,
+    View,
+):
+    niveis_permitidos = PAPEIS_COMUNICACAO_ESCRITA
+
+    def get_queryset(self):
+        queryset = CampanhaComunicacao.objects.select_related("responsavel", "modelo_mensagem", "campanha")
+        return filtrar_queryset_por_usuario(queryset, self.request.user)
+
+    def post(self, request, pk):
+        campanha = get_object_or_404(self.get_queryset(), pk=pk)
+        resumo = processar_campanha_comunicacao(campanha, forcar_execucao=True)
+        if resumo.get("status") == "pausada":
+            messages.warning(
+                request,
+                resumo.get("erro") or "A campanha foi pausada por falta de integracao oficial configurada.",
+            )
+        else:
+            messages.success(
+                request,
+                (
+                    f"Processamento concluido: {resumo.get('processados', 0)} envio(s) OK, "
+                    f"{resumo.get('falhas', 0)} falha(s)."
+                ),
+            )
+        return redirect("comunicacao:campanha_detalhe", pk=campanha.pk)
 
 
 class ListaBloqueioCreateView(LoginRequiredMixin, NivelAcessoMixin, MensagemSucessoMixin, CreateView):

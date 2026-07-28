@@ -1,9 +1,15 @@
 from django.utils import timezone
 
 from core.api import ViewSetCampanhaProtegido
-from core.permissions import PAPEIS_COMUNICACAO_ESCRITA, PAPEIS_COMUNICACAO_LEITURA, PAPEIS_TODOS_MODULOS
+from core.permissions import (
+    PAPEIS_COMUNICACAO_ESCRITA,
+    PAPEIS_COMUNICACAO_LEITURA,
+    PAPEIS_TODOS_MODULOS,
+    usuario_tem_nivel,
+)
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.decorators import action
 
 from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
 from .serializers import (
@@ -13,6 +19,7 @@ from .serializers import (
     ModeloMensagemSerializer,
     NotificacaoInternaSerializer,
 )
+from .services import processar_campanha_comunicacao
 
 
 class ModeloMensagemViewSet(ViewSetCampanhaProtegido):
@@ -36,6 +43,15 @@ class CampanhaComunicacaoViewSet(ViewSetCampanhaProtegido):
     filterset_fields = ("canal", "status", "responsavel")
     search_fields = ("nome", "assunto", "conteudo")
     ordering_fields = ("data_envio", "nome", "criado_em", "atualizado_em")
+
+    @action(detail=True, methods=["post"], url_path="executar")
+    def executar(self, request, pk=None):
+        if not usuario_tem_nivel(request.user, PAPEIS_COMUNICACAO_ESCRITA):
+            raise PermissionDenied("Voce nao possui permissao para executar campanhas de comunicacao.")
+        campanha = self.get_object()
+        resumo = processar_campanha_comunicacao(campanha, referencia=timezone.now(), forcar_execucao=True)
+        serializer = self.get_serializer(campanha)
+        return Response({"campanha": serializer.data, "processamento": resumo})
 
 
 class ListaBloqueioViewSet(ViewSetCampanhaProtegido):

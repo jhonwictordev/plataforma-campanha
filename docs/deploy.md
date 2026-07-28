@@ -31,6 +31,10 @@ REDIS_URL=redis://127.0.0.1:6379/0
 CELERY_BROKER_URL=redis://127.0.0.1:6379/0
 CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/1
 DEFAULT_FROM_EMAIL=nao-responda@seu-dominio.com
+WHATSAPP_OFFICIAL_API_URL=https://api-oficial-whatsapp.exemplo.com/messages
+WHATSAPP_OFFICIAL_API_TOKEN=defina_token_oficial_whatsapp
+SMS_OFFICIAL_API_URL=https://api-oficial-sms.exemplo.com/messages
+SMS_OFFICIAL_API_TOKEN=defina_token_oficial_sms
 ```
 
 ## 3. Preparacao da aplicacao
@@ -75,6 +79,14 @@ Depois de subir as migrations, registre as rotinas padrao no scheduler:
 
 ```bash
 python manage.py sincronizar_rotinas_celery
+```
+
+Na versao atual, a rotina `Plataforma - Comunicacoes agendadas` executa o processamento assíncrono das campanhas vencidas. Se os canais `whatsapp` ou `sms` estiverem sem integracao oficial configurada, a campanha sera pausada com trilha de erro e notificacao interna.
+
+Para uma verificacao manual ou homologacao controlada, voce tambem pode forcar o processamento pelo shell:
+
+```bash
+python manage.py shell -c "from comunicacao.services import processar_campanhas_agendadas; print(processar_campanhas_agendadas())"
 ```
 
 ## 5. Proxy reverso

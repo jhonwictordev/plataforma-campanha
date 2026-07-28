@@ -89,6 +89,11 @@ class CampanhaComunicacao(ModeloCampanha):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.RASCUNHO, db_index=True)
     permitir_cancelamento_inscricao = models.BooleanField(default=True)
     observacoes_internas = models.TextField(blank=True)
+    provedor_ultimo_envio = models.CharField(max_length=40, blank=True)
+    ultima_execucao_em = models.DateTimeField(blank=True, null=True)
+    processamento_iniciado_em = models.DateTimeField(blank=True, null=True)
+    processamento_finalizado_em = models.DateTimeField(blank=True, null=True)
+    erro_ultima_execucao = models.CharField(max_length=255, blank=True)
     quantidade_programada = models.PositiveIntegerField(default=0)
     quantidade_enviada = models.PositiveIntegerField(default=0)
     quantidade_entregue = models.PositiveIntegerField(default=0)
@@ -102,6 +107,7 @@ class CampanhaComunicacao(ModeloCampanha):
             models.Index(fields=["nome"]),
             models.Index(fields=["canal", "status"]),
             models.Index(fields=["data_envio"]),
+            models.Index(fields=["status", "ultima_execucao_em"]),
         ]
 
     def __str__(self):
@@ -178,6 +184,11 @@ class EnvioComunicacao(ModeloCampanha):
     data_envio = models.DateTimeField(blank=True, null=True)
     data_entrega = models.DateTimeField(blank=True, null=True)
     data_resposta = models.DateTimeField(blank=True, null=True)
+    ultima_tentativa_em = models.DateTimeField(blank=True, null=True)
+    tentativas_envio = models.PositiveIntegerField(default=0)
+    provedor_utilizado = models.CharField(max_length=40, blank=True)
+    identificador_externo = models.CharField(max_length=120, blank=True)
+    ultimo_erro_tecnico = models.CharField(max_length=255, blank=True)
     cancelou_inscricao = models.BooleanField(default=False)
     observacoes_internas = models.TextField(blank=True)
     responsavel_registro = models.ForeignKey(
@@ -195,6 +206,7 @@ class EnvioComunicacao(ModeloCampanha):
             models.Index(fields=["status", "canal"]),
             models.Index(fields=["campanha_comunicacao", "status"]),
             models.Index(fields=["contato", "canal"]),
+            models.Index(fields=["status", "ultima_tentativa_em"]),
         ]
         constraints = [
             models.UniqueConstraint(

@@ -10,6 +10,15 @@
         {% if pode_editar %}
             <a class="btn btn-primary" href="{% url 'comunicacao:campanha_editar' campanha_comunicacao.pk %}">Editar campanha</a>
         {% endif %}
+        {% if pode_executar_agora %}
+            <form method="post" action="{% url 'comunicacao:campanha_executar' campanha_comunicacao.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-play-circle"></i>
+                    Executar agora
+                </button>
+            </form>
+        {% endif %}
         <a class="btn btn-outline-secondary" href="{% url 'comunicacao:home' %}">Voltar</a>
     </div>
 </div>
@@ -63,8 +72,16 @@
                     <dd class="col-sm-7">{{ campanha_comunicacao.responsavel|default:"-" }}</dd>
                     <dt class="col-sm-5">Envio</dt>
                     <dd class="col-sm-7">{{ campanha_comunicacao.data_envio|date:"d/m/Y H:i"|default:"Nao agendado" }}</dd>
+                    <dt class="col-sm-5">Provedor</dt>
+                    <dd class="col-sm-7">{{ campanha_comunicacao.provedor_ultimo_envio|default:"-" }}</dd>
+                    <dt class="col-sm-5">Ultima execucao</dt>
+                    <dd class="col-sm-7">{{ campanha_comunicacao.ultima_execucao_em|date:"d/m/Y H:i"|default:"-" }}</dd>
                     <dt class="col-sm-5">Descadastro</dt>
                     <dd class="col-sm-7">{% if campanha_comunicacao.permitir_cancelamento_inscricao %}Permitido{% else %}Bloqueado{% endif %}</dd>
+                    {% if campanha_comunicacao.erro_ultima_execucao %}
+                        <dt class="col-sm-5 text-danger">Ultimo erro</dt>
+                        <dd class="col-sm-7 text-danger">{{ campanha_comunicacao.erro_ultima_execucao }}</dd>
+                    {% endif %}
                 </dl>
             </div>
         </div>
@@ -83,6 +100,7 @@
                     <th>Contato</th>
                     <th>Status</th>
                     <th>Programacao</th>
+                    <th>Execucao</th>
                     <th>Retorno</th>
                     <th class="text-end">Acoes</th>
                 </tr>
@@ -97,8 +115,17 @@
                         <td><span class="badge text-bg-secondary">{{ envio.get_status_display }}</span></td>
                         <td class="small text-secondary">{{ envio.data_programada|date:"d/m/Y H:i"|default:"-" }}</td>
                         <td class="small text-secondary">
+                            <div>Tentativas: {{ envio.tentativas_envio }}</div>
+                            <div>{{ envio.ultima_tentativa_em|date:"d/m/Y H:i"|default:"Sem tentativa" }}</div>
+                            {% if envio.provedor_utilizado %}
+                                <div>Provedor: {{ envio.provedor_utilizado }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="small text-secondary">
                             {% if envio.resposta_recebida %}
                                 {{ envio.resposta_recebida|truncatechars:80 }}
+                            {% elif envio.ultimo_erro_tecnico %}
+                                {{ envio.ultimo_erro_tecnico|truncatechars:80 }}
                             {% elif envio.erro_envio %}
                                 {{ envio.erro_envio }}
                             {% else %}
@@ -113,7 +140,7 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-secondary">Nenhum envio gerado ate o momento.</td>
+                        <td colspan="6" class="text-center py-5 text-secondary">Nenhum envio gerado ate o momento.</td>
                     </tr>
                 {% endfor %}
             </tbody>

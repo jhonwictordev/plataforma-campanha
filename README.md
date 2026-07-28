@@ -129,7 +129,22 @@ Sincronizar as rotinas periodicas do `django-celery-beat`:
 python manage.py sincronizar_rotinas_celery
 ```
 
+Processar comunicacoes agendadas imediatamente, sem esperar o proximo ciclo do `beat`:
+
+```bash
+python manage.py shell -c "from comunicacao.services import processar_campanhas_agendadas; print(processar_campanhas_agendadas())"
+```
+
 Todos os dados gerados por `popular_dados_demo` sao sinteticos e usam o dominio ficticio `@demo.plataformacampanha.local`. A senha padrao dos usuarios demo e `Demo2026!`.
+
+## Integracoes oficiais de comunicacao
+
+- `email`: usa o backend oficial configurado em `EMAIL_BACKEND` e `DEFAULT_FROM_EMAIL`
+- `whatsapp`: exige `WHATSAPP_OFFICIAL_API_URL` e `WHATSAPP_OFFICIAL_API_TOKEN`
+- `sms`: exige `SMS_OFFICIAL_API_URL` e `SMS_OFFICIAL_API_TOKEN`
+- `notificacao_interna`: envia alertas internos vinculados aos responsaveis do contato e da campanha
+
+Se uma campanha de WhatsApp ou SMS chegar ao horario de execucao sem a integracao oficial configurada, o sistema pausa a campanha, registra o erro e notifica o responsavel internamente em vez de tentar um disparo inseguro.
 
 ## Testes e validacao
 

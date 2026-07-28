@@ -135,10 +135,19 @@
                                     <div>Programada: {{ campanha.quantidade_programada }}</div>
                                     <div>Enviada: {{ campanha.quantidade_enviada }}</div>
                                     <div>Falha: {{ campanha.quantidade_falha }}</div>
+                                    {% if campanha.ultima_execucao_em %}
+                                        <div>Ultima execucao: {{ campanha.ultima_execucao_em|date:"d/m H:i" }}</div>
+                                    {% endif %}
                                 </td>
                                 <td class="text-end">
                                     <a class="btn btn-sm btn-outline-primary" href="{% url 'comunicacao:campanha_detalhe' campanha.pk %}">Ver</a>
                                     {% if pode_editar %}
+                                        {% if campanha.status == "agendada" or campanha.status == "pausada" %}
+                                            <form method="post" action="{% url 'comunicacao:campanha_executar' campanha.pk %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">Executar</button>
+                                            </form>
+                                        {% endif %}
                                         <a class="btn btn-sm btn-outline-secondary" href="{% url 'comunicacao:campanha_editar' campanha.pk %}">Editar</a>
                                     {% endif %}
                                 </td>

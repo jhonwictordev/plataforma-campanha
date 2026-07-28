@@ -1,7 +1,7 @@
 ROTINAS_CELERY = [
     {
         "nome": "Plataforma - Comunicacoes agendadas",
-        "task": "core.tasks.sinalizar_campanhas_agendadas_task",
+        "task": "comunicacao.tasks.processar_campanhas_agendadas_task",
         "tipo": "interval",
         "every": 15,
         "period": "minutes",
