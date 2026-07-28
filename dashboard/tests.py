@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from agenda.models import EventoAgenda
 from auditoria.models import RegistroAuditoria
@@ -375,4 +376,63 @@ class DashboardHomeViewTestCase(TestCase):
         self.assertIn("Financeiro conciliado", titulos)
         self.assertNotIn("Alerta de outro usuario", titulos)
         categorias = {item["rotulo"] for item in resposta.context["grafico_alertas_categoria"]}
+        self.assertEqual(categorias, {"Agenda"})
+
+    def test_api_dashboard_isola_metricas_por_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_a)
+        resposta = client.get("/api/v1/dashboard/?periodo=30d")
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["indicadores"]["contatos"], 3)
+        self.assertEqual(dados["indicadores"]["apoiadores"], 1)
+        self.assertEqual(dados["indicadores"]["liderancas"], 1)
+        self.assertEqual(dados["indicadores"]["voluntarios"], 1)
+        self.assertEqual(dados["indicadores"]["comunicacoes_agendadas"], 2)
+        self.assertEqual(dados["indicadores"]["contas_vencidas"], 1)
+        self.assertEqual(dados["financeiro_resumo"]["saldo"], 580.0)
+        self.assertEqual(len(dados["proximos_compromissos"]), 1)
+        self.assertEqual(len(dados["tarefas_criticas"]), 1)
+        self.assertEqual(len(dados["comunicacoes_programadas"]), 2)
+        self.assertEqual(len(dados["contas_vencidas"]), 1)
+        rotulos_status = {item["rotulo"] for item in dados["graficos"]["status"]}
+        self.assertIn("Apoiador", rotulos_status)
+        self.assertIn("Novo contato", rotulos_status)
+        self.assertNotIn("Lideranca", rotulos_status)
+
+    def test_api_dashboard_filtra_por_cidade(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_a)
+        resposta = client.get("/api/v1/dashboard/?periodo=30d&cidade=Fortaleza")
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["indicadores"]["contatos"], 2)
+        self.assertEqual(dados["graficos"]["cidades"][0]["rotulo"], "Fortaleza")
+        self.assertEqual(len(dados["graficos"]["bairros"]), 1)
+        self.assertEqual(dados["graficos"]["bairros"][0]["rotulo"], "Centro")
+        self.assertEqual(dados["mapa_cadastros"][0]["total"], 2)
+
+    def test_api_dashboard_staff_pode_filtrar_por_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_staff)
+        resposta = client.get(f"/api/v1/dashboard/?periodo=30d&campanha={self.campanha_a.pk}")
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["campanha_atual"]["id"], str(self.campanha_a.pk))
+        self.assertEqual(dados["indicadores"]["contatos"], 3)
+        self.assertEqual(dados["indicadores"]["comunicacoes_agendadas"], 2)
+        self.assertEqual(dados["indicadores"]["contas_vencidas"], 1)
+        self.assertEqual(len(dados["campanhas_disponiveis"]), 2)
+
+    def test_api_dashboard_alertas_sao_isolados_por_usuario(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_a)
+        resposta = client.get("/api/v1/dashboard/?periodo=30d")
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        titulos = [item["titulo"] for item in dados["notificacoes_dashboard"]]
+        self.assertIn("Agenda com conflito", titulos)
+        self.assertIn("Financeiro conciliado", titulos)
+        self.assertNotIn("Alerta de outro usuario", titulos)
+        categorias = {item["rotulo"] for item in dados["graficos"]["alertas_categoria"]}
         self.assertEqual(categorias, {"Agenda"})

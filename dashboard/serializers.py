@@ -1,0 +1,25 @@
+from rest_framework import serializers
+
+
+class DashboardRespostaSerializer(serializers.Serializer):
+    periodo = serializers.CharField()
+    data_inicial = serializers.DateField()
+    data_final = serializers.DateField()
+    filtros = serializers.JSONField()
+    campanha_atual = serializers.JSONField(allow_null=True)
+    campanhas_disponiveis = serializers.JSONField()
+    periodo_opcoes = serializers.JSONField()
+    cidades_disponiveis = serializers.JSONField()
+    bairros_disponiveis = serializers.JSONField()
+    indicadores = serializers.JSONField()
+    financeiro_resumo = serializers.JSONField()
+    comunicacao_resumo = serializers.JSONField()
+    resumo_operacional = serializers.JSONField()
+    proximos_compromissos = serializers.JSONField()
+    tarefas_criticas = serializers.JSONField()
+    notificacoes_dashboard = serializers.JSONField()
+    comunicacoes_programadas = serializers.JSONField()
+    contas_vencidas = serializers.JSONField()
+    atividades_recentes = serializers.JSONField()
+    graficos = serializers.JSONField()
+    mapa_cadastros = serializers.JSONField()

@@ -325,3 +325,142 @@ def resumo_operacional(notificacoes, comunicacoes, tarefas, eventos, financeiro,
         .count(),
         "taxa_entrega": round((entregues / enviados) * 100, 2) if enviados else 0.0,
     }
+
+
+def _decimal_para_float(valor):
+    if valor is None:
+        return 0.0
+    if isinstance(valor, Decimal):
+        return float(valor)
+    return float(valor or 0)
+
+
+def _data_para_iso(valor):
+    if not valor:
+        return ""
+    return valor.isoformat()
+
+
+def _datetime_para_iso(valor):
+    if not valor:
+        return ""
+    return timezone.localtime(valor).isoformat()
+
+
+def campanha_resumida(campanha):
+    if not campanha:
+        return None
+    return {
+        "id": str(campanha.pk),
+        "nome_campanha": campanha.nome_campanha,
+        "nome_candidato": campanha.nome_candidato,
+        "cargo_disputado": campanha.cargo_disputado,
+        "municipio": campanha.municipio,
+        "estado": campanha.estado,
+        "situacao": campanha.situacao,
+    }
+
+
+def campanhas_resumidas(campanhas):
+    return [campanha_resumida(campanha) for campanha in campanhas]
+
+
+def serializar_proximos_compromissos(eventos):
+    return [
+        {
+            "id": str(evento.pk),
+            "titulo": evento.titulo,
+            "tipo": evento.get_tipo_display(),
+            "data": _data_para_iso(evento.data),
+            "horario_inicial": evento.horario_inicial.strftime("%H:%M") if evento.horario_inicial else "",
+            "horario_final": evento.horario_final.strftime("%H:%M") if evento.horario_final else "",
+            "status": evento.get_status_display(),
+            "responsavel": evento.responsavel.nome_completo if evento.responsavel else "",
+            "endereco": evento.endereco,
+        }
+        for evento in eventos
+    ]
+
+
+def serializar_tarefas_criticas(tarefas):
+    return [
+        {
+            "id": str(tarefa.pk),
+            "titulo": tarefa.titulo,
+            "status": tarefa.get_status_display(),
+            "prioridade": tarefa.prioridade,
+            "prazo": _datetime_para_iso(tarefa.prazo),
+            "responsavel": tarefa.responsavel.nome if tarefa.responsavel else "",
+        }
+        for tarefa in tarefas
+    ]
+
+
+def serializar_notificacoes(notificacoes):
+    return [
+        {
+            "id": str(notificacao.pk),
+            "titulo": notificacao.titulo,
+            "mensagem": notificacao.mensagem,
+            "categoria": notificacao.get_categoria_display(),
+            "campanha_id": str(notificacao.campanha_id) if notificacao.campanha_id else "",
+            "lida_em": _datetime_para_iso(notificacao.lida_em),
+            "criado_em": _datetime_para_iso(notificacao.criado_em),
+            "url_destino": notificacao.url_destino,
+        }
+        for notificacao in notificacoes
+    ]
+
+
+def serializar_comunicacoes_programadas(comunicacoes):
+    return [
+        {
+            "id": str(comunicacao.pk),
+            "nome": comunicacao.nome,
+            "canal": comunicacao.get_canal_display(),
+            "status": comunicacao.get_status_display(),
+            "data_envio": _datetime_para_iso(comunicacao.data_envio),
+            "quantidade_programada": comunicacao.quantidade_programada,
+            "responsavel": comunicacao.responsavel.nome_completo if comunicacao.responsavel else "",
+        }
+        for comunicacao in comunicacoes
+    ]
+
+
+def serializar_contas_vencidas(lancamentos):
+    return [
+        {
+            "id": str(lancamento.pk),
+            "descricao": lancamento.descricao,
+            "tipo": lancamento.get_tipo_display(),
+            "status": lancamento.get_status_display(),
+            "valor_reais": _decimal_para_float(lancamento.valor_reais),
+            "data_vencimento": _data_para_iso(lancamento.data_vencimento),
+            "categoria": lancamento.categoria.nome if lancamento.categoria else "",
+            "centro_custo": lancamento.centro_custo.nome if lancamento.centro_custo else "",
+        }
+        for lancamento in lancamentos
+    ]
+
+
+def serializar_atividades_recentes(registros):
+    return [
+        {
+            "id": str(registro.pk),
+            "acao": registro.acao,
+            "modelo": registro.modelo,
+            "objeto_id": registro.objeto_id,
+            "resumo": registro.resumo,
+            "usuario": registro.usuario.nome_completo if registro.usuario else "",
+            "criado_em": _datetime_para_iso(registro.criado_em),
+        }
+        for registro in registros
+    ]
+
+
+def serializar_financeiro_resumo(resumo):
+    return {
+        "receitas": _decimal_para_float(resumo["receitas"]),
+        "despesas": _decimal_para_float(resumo["despesas"]),
+        "saldo": _decimal_para_float(resumo["saldo"]),
+    }
