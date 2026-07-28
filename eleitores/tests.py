@@ -1,8 +1,13 @@
+import io
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from openpyxl import Workbook
 from rest_framework.test import APIClient
 
+from auditoria.models import LogSeguranca
 from campanhas.models import Campanha
 from liderancas.models import Lideranca
 
@@ -67,7 +72,7 @@ class ContatoCRMPermissoesTestCase(TestCase):
         )
         self.lideranca_a = Lideranca.objects.create(
             campanha=self.campanha_a,
-            nome_completo="Liderança A",
+            nome_completo="Lideranca A",
             telefone="85999990000",
             tipo_lideranca="comunitaria",
             estado="CE",
@@ -81,6 +86,8 @@ class ContatoCRMPermissoesTestCase(TestCase):
             status_funil="novo_contato",
             lideranca_relacionada=self.lideranca_a,
             responsavel_cadastro=self.usuario_a,
+            consentimento_comunicacao=True,
+            canal_autorizado="whatsapp",
         )
         self.contato_b = ContatoCRM.objects.create(
             campanha=self.campanha_b,
@@ -89,6 +96,24 @@ class ContatoCRMPermissoesTestCase(TestCase):
             cidade="Caucaia",
             status_funil="novo_contato",
             responsavel_cadastro=self.usuario_b,
+            consentimento_comunicacao=True,
+            canal_autorizado="email",
+        )
+
+    def _arquivo_csv(self, conteudo: str, nome: str = "contatos.csv"):
+        return SimpleUploadedFile(nome, conteudo.encode("utf-8"), content_type="text/csv")
+
+    def _arquivo_xlsx(self, linhas, nome: str = "contatos.xlsx"):
+        workbook = Workbook()
+        worksheet = workbook.active
+        for linha in linhas:
+            worksheet.append(linha)
+        buffer = io.BytesIO()
+        workbook.save(buffer)
+        return SimpleUploadedFile(
+            nome,
+            buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
     def test_lista_web_mostra_apenas_contatos_da_mesma_campanha(self):
@@ -102,6 +127,12 @@ class ContatoCRMPermissoesTestCase(TestCase):
         resposta = self.client.get(reverse("eleitores:detalhe", args=[self.contato_b.pk]))
         self.assertEqual(resposta.status_code, 404)
 
+    def test_kanban_web_respeita_isolamento_por_campanha(self):
+        self.client.force_login(self.usuario_a)
+        resposta = self.client.get(reverse("eleitores:kanban"))
+        self.assertContains(resposta, "Contato A")
+        self.assertNotContains(resposta, "Contato B")
+
     def test_perfil_financeiro_nao_acessa_crm_web(self):
         self.client.force_login(self.financeiro_a)
         resposta = self.client.get(reverse("eleitores:home"))
@@ -111,6 +142,76 @@ class ContatoCRMPermissoesTestCase(TestCase):
         self.client.force_login(self.visualizador_a)
         resposta = self.client.get(reverse("eleitores:novo"))
         self.assertEqual(resposta.status_code, 403)
+
+    def test_visualizador_nao_pode_importar_ou_exportar(self):
+        self.client.force_login(self.visualizador_a)
+        resposta_importacao = self.client.get(reverse("eleitores:importar"))
+        resposta_exportacao = self.client.get(reverse("eleitores:exportar"), {"formato": "csv"})
+        self.assertEqual(resposta_importacao.status_code, 403)
+        self.assertEqual(resposta_exportacao.status_code, 403)
+
+    def test_importacao_csv_cria_contato_e_registra_log(self):
+        arquivo = self._arquivo_csv(
+            "nome_completo;telefone;email;cidade;status_funil;consentimento_comunicacao;canal_autorizado\n"
+            "Contato Importado;85933334444;importado@example.com;Fortaleza;interessado;sim;whatsapp\n"
+        )
+        self.client.force_login(self.usuario_a)
+        resposta = self.client.post(
+            reverse("eleitores:importar"),
+            {
+                "arquivo": arquivo,
+                "atualizar_existentes": "",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(
+            ContatoCRM.objects.filter(
+                campanha=self.campanha_a,
+                telefone="85933334444",
+                consentimento_comunicacao=True,
+            ).exists()
+        )
+        self.assertTrue(LogSeguranca.objects.filter(evento="crm_importacao_contatos", usuario=self.usuario_a).exists())
+
+    def test_importacao_xlsx_atualiza_contato_existente(self):
+        arquivo = self._arquivo_xlsx(
+            [
+                ["nome_completo", "telefone", "cidade", "status_funil", "tags"],
+                ["Contato A Atualizado", "85911110000", "Fortaleza", "apoiador", "bairro-centro"],
+            ]
+        )
+        self.client.force_login(self.usuario_a)
+        resposta = self.client.post(
+            reverse("eleitores:importar"),
+            {
+                "arquivo": arquivo,
+                "atualizar_existentes": "on",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.contato_a.refresh_from_db()
+        self.assertEqual(self.contato_a.nome_completo, "Contato A Atualizado")
+        self.assertEqual(self.contato_a.status_funil, ContatoCRM.EtapasFunil.APOIADOR)
+        self.assertIn("bairro-centro", self.contato_a.tags)
+
+    def test_exportacao_csv_retorna_apenas_contatos_autorizados_da_campanha(self):
+        ContatoCRM.objects.create(
+            campanha=self.campanha_a,
+            nome_completo="Contato Sem Consentimento",
+            telefone="85944445555",
+            cidade="Fortaleza",
+            status_funil="inativo",
+            responsavel_cadastro=self.usuario_a,
+            consentimento_comunicacao=False,
+        )
+        self.client.force_login(self.usuario_a)
+        resposta = self.client.get(reverse("eleitores:exportar"), {"formato": "csv"})
+        self.assertEqual(resposta.status_code, 200)
+        conteudo = resposta.content.decode("utf-8-sig")
+        self.assertIn("Contato A", conteudo)
+        self.assertNotIn("Contato B", conteudo)
+        self.assertNotIn("Contato Sem Consentimento", conteudo)
+        self.assertIn("attachment; filename=", resposta["Content-Disposition"])
 
     def test_api_lista_isola_por_campanha(self):
         client = APIClient()
@@ -124,7 +225,7 @@ class ContatoCRMPermissoesTestCase(TestCase):
     def test_api_nao_permite_relacionar_lideranca_de_outra_campanha(self):
         lideranca_b = Lideranca.objects.create(
             campanha=self.campanha_b,
-            nome_completo="Liderança B",
+            nome_completo="Lideranca B",
             telefone="85988880000",
             tipo_lideranca="regional",
             estado="CE",
@@ -136,7 +237,7 @@ class ContatoCRMPermissoesTestCase(TestCase):
             "/api/v1/contatos/",
             {
                 "nome_completo": "Contato Novo",
-                "telefone": "85933334444",
+                "telefone": "85933335555",
                 "cidade": "Fortaleza",
                 "status_funil": "novo_contato",
                 "lideranca_relacionada": str(lideranca_b.pk),

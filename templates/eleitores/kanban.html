@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .crm-kanban-column {
+        min-height: 100%;
+        border-radius: 1.25rem;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        background: rgba(255, 255, 255, 0.92);
+    }
+
+    [data-bs-theme="dark"] .crm-kanban-column {
+        background: rgba(15, 23, 42, 0.88);
+    }
+
+    .crm-kanban-card {
+        border-radius: 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(248, 250, 252, 0.92);
+    }
+
+    [data-bs-theme="dark"] .crm-kanban-card {
+        background: rgba(30, 41, 59, 0.92);
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Funil eleitoral</p>
+        <h2 class="h3 mb-1">{{ titulo }}</h2>
+        <p class="text-secondary mb-0">{{ descricao }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'eleitores:home' %}{% if querystring_atual %}?{{ querystring_atual }}{% endif %}">
+            <i class="bi bi-table"></i>
+            Lista
+        </a>
+        {% if pode_editar %}
+            <a class="btn btn-primary" href="{% url 'eleitores:novo' %}">
+                <i class="bi bi-person-plus"></i>
+                Novo contato
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-lg-4">
+                <label class="form-label">Busca</label>
+                <input type="text" class="form-control" name="busca" value="{{ filtros.busca }}" placeholder="Nome, telefone ou e-mail">
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Cidade</label>
+                <input type="text" class="form-control" name="cidade" value="{{ filtros.cidade }}" placeholder="Cidade">
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Bairro</label>
+                <input type="text" class="form-control" name="bairro" value="{{ filtros.bairro }}" placeholder="Bairro">
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in status_opcoes %}
+                        <option value="{{ valor }}" {% if filtros.status == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Responsavel</label>
+                <select class="form-select" name="responsavel">
+                    <option value="">Todos</option>
+                    {% for responsavel in responsaveis_disponiveis %}
+                        <option value="{{ responsavel.pk }}" {% if filtros.responsavel == responsavel.pk|stringformat:"s" %}selected{% endif %}>{{ responsavel }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <label class="form-label">Origem</label>
+                <select class="form-select" name="origem">
+                    <option value="">Todas</option>
+                    {% for origem in origens_disponiveis %}
+                        <option value="{{ origem }}" {% if filtros.origem == origem %}selected{% endif %}>{{ origem }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <label class="form-label">Tag</label>
+                <select class="form-select" name="tag">
+                    <option value="">Todas</option>
+                    {% for tag in tags_disponiveis %}
+                        <option value="{{ tag }}" {% if filtros.tag == tag %}selected{% endif %}>{{ tag }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3 d-flex align-items-end gap-2">
+                <button class="btn btn-outline-primary flex-fill" type="submit">Filtrar</button>
+                <a class="btn btn-outline-secondary" href="{% url 'eleitores:kanban' %}">Limpar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+    <div class="small text-secondary">Total filtrado: {{ total_contatos }} contato{{ total_contatos|pluralize }}</div>
+    <div class="small text-secondary">Os cartoes respeitam campanha, perfil de acesso e filtros ativos.</div>
+</div>
+
+<div class="row g-3">
+    {% for coluna in colunas_kanban %}
+        <div class="col-md-6 col-xl">
+            <div class="crm-kanban-column p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <strong>{{ coluna.rotulo }}</strong>
+                    <span class="badge text-bg-light border">{{ coluna.quantidade }}</span>
+                </div>
+                <div class="d-grid gap-3">
+                    {% for contato in coluna.contatos %}
+                        <div class="crm-kanban-card p-3">
+                            <div class="d-flex justify-content-between gap-2 mb-2">
+                                <strong>{{ contato.nome_completo }}</strong>
+                                {% if contato.consentimento_comunicacao %}
+                                    <span class="badge text-bg-success">OK</span>
+                                {% endif %}
+                            </div>
+                            <div class="small text-secondary mb-2">{{ contato.cidade }}{% if contato.bairro %} | {{ contato.bairro }}{% endif %}</div>
+                            <div class="small mb-2">{{ contato.telefone }}{% if contato.email %} | {{ contato.email }}{% endif %}</div>
+                            {% if contato.tags %}
+                                <div class="d-flex flex-wrap gap-1 mb-3">
+                                    {% for tag in contato.tags %}
+                                        <span class="badge text-bg-light border">{{ tag }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="d-flex gap-2">
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'eleitores:detalhe' contato.pk %}">Ver</a>
+                                {% if pode_editar %}
+                                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'eleitores:editar' contato.pk %}">Editar</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="small text-secondary">Nenhum contato nesta etapa.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -86,3 +86,44 @@ class ContatoCRMFormulario(FormularioBootstrapMixin):
         if commit:
             instancia.save()
         return instancia
+
+
+class FormularioSimplesBootstrapMixin(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            if isinstance(campo.widget, (forms.Select, forms.SelectMultiple)):
+                campo.widget.attrs.setdefault("class", "form-select")
+            else:
+                campo.widget.attrs.setdefault("class", "form-control")
+            if not isinstance(campo.widget, forms.CheckboxInput):
+                campo.widget.attrs.setdefault("placeholder", campo.label)
+
+
+class ImportacaoContatoCRMFormulario(FormularioSimplesBootstrapMixin):
+    arquivo = forms.FileField(
+        label="Arquivo",
+        help_text="Envie um arquivo CSV ou XLSX com os contatos do CRM.",
+    )
+    atualizar_existentes = forms.BooleanField(
+        label="Atualizar contatos ja existentes",
+        required=False,
+        help_text="Quando marcado, contatos com o mesmo telefone ou e-mail serao atualizados.",
+    )
+
+    def clean_arquivo(self):
+        arquivo = self.cleaned_data["arquivo"]
+        nome = (arquivo.name or "").lower()
+        if not (nome.endswith(".csv") or nome.endswith(".xlsx")):
+            raise forms.ValidationError("Envie um arquivo CSV ou XLSX.")
+        return arquivo
+
+
+class ExportacaoContatoCRMFormulario(FormularioSimplesBootstrapMixin):
+    formato = forms.ChoiceField(
+        label="Formato",
+        choices=(
+            ("csv", "CSV"),
+            ("xlsx", "Excel"),
+        ),
+    )

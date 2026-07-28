@@ -6,24 +6,52 @@
         <h2 class="h3 mb-1">{{ titulo }}</h2>
         <p class="text-secondary mb-0">{{ descricao }}</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'eleitores:novo' %}">
-        <i class="bi bi-person-plus"></i>
-        Novo contato
-    </a>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary" href="{% url 'eleitores:kanban' %}{% if querystring_atual %}?{{ querystring_atual }}{% endif %}">
+            <i class="bi bi-kanban"></i>
+            Kanban
+        </a>
+        {% if pode_editar %}
+            <a class="btn btn-outline-secondary" href="{% url 'eleitores:importar' %}">
+                <i class="bi bi-upload"></i>
+                Importar
+            </a>
+            <a class="btn btn-outline-secondary" href="{% url 'eleitores:exportar' %}?formato=csv{% if querystring_atual %}&{{ querystring_atual }}{% endif %}">
+                <i class="bi bi-download"></i>
+                Exportar CSV
+            </a>
+            <a class="btn btn-outline-secondary" href="{% url 'eleitores:exportar' %}?formato=xlsx{% if querystring_atual %}&{{ querystring_atual }}{% endif %}">
+                <i class="bi bi-file-earmark-excel"></i>
+                Excel
+            </a>
+            <a class="btn btn-primary" href="{% url 'eleitores:novo' %}">
+                <i class="bi bi-person-plus"></i>
+                Novo contato
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="alert alert-info border-0 shadow-sm mb-4" role="alert">
+    Exportacoes do CRM liberam apenas contatos com consentimento de comunicacao ativo e sempre respeitam o recorte da campanha logada.
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
         <form method="get" class="row g-3">
-            <div class="col-md-5">
+            <div class="col-lg-4">
                 <label class="form-label">Busca</label>
                 <input type="text" class="form-control" name="busca" value="{{ filtros.busca }}" placeholder="Nome, telefone ou e-mail">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4 col-lg-2">
                 <label class="form-label">Cidade</label>
                 <input type="text" class="form-control" name="cidade" value="{{ filtros.cidade }}" placeholder="Cidade">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Bairro</label>
+                <input type="text" class="form-control" name="bairro" value="{{ filtros.bairro }}" placeholder="Bairro">
+            </div>
+            <div class="col-md-4 col-lg-2">
                 <label class="form-label">Status</label>
                 <select class="form-select" name="status">
                     <option value="">Todos</option>
@@ -32,8 +60,36 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-1 d-flex align-items-end">
-                <button class="btn btn-outline-primary w-100" type="submit">Filtrar</button>
+            <div class="col-md-4 col-lg-2">
+                <label class="form-label">Responsavel</label>
+                <select class="form-select" name="responsavel">
+                    <option value="">Todos</option>
+                    {% for responsavel in responsaveis_disponiveis %}
+                        <option value="{{ responsavel.pk }}" {% if filtros.responsavel == responsavel.pk|stringformat:"s" %}selected{% endif %}>{{ responsavel }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <label class="form-label">Origem</label>
+                <select class="form-select" name="origem">
+                    <option value="">Todas</option>
+                    {% for origem in origens_disponiveis %}
+                        <option value="{{ origem }}" {% if filtros.origem == origem %}selected{% endif %}>{{ origem }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <label class="form-label">Tag</label>
+                <select class="form-select" name="tag">
+                    <option value="">Todas</option>
+                    {% for tag in tags_disponiveis %}
+                        <option value="{{ tag }}" {% if filtros.tag == tag %}selected{% endif %}>{{ tag }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3 d-flex align-items-end gap-2">
+                <button class="btn btn-outline-primary flex-fill" type="submit">Filtrar</button>
+                <a class="btn btn-outline-secondary" href="{% url 'eleitores:home' %}">Limpar</a>
             </div>
         </form>
     </div>
@@ -45,11 +101,11 @@
             <thead>
                 <tr>
                     <th>Contato</th>
-                    <th>Cidade</th>
+                    <th>Territorio</th>
                     <th>Status</th>
                     <th>Consentimento</th>
-                    <th>Responsável</th>
-                    <th class="text-end">Ações</th>
+                    <th>Responsavel</th>
+                    <th class="text-end">Acoes</th>
                 </tr>
             </thead>
             <tbody>
@@ -57,9 +113,22 @@
                     <tr>
                         <td>
                             <strong>{{ contato.nome_completo }}</strong>
-                            <div class="small text-secondary">{{ contato.telefone }}{% if contato.email %} • {{ contato.email }}{% endif %}</div>
+                            <div class="small text-secondary">{{ contato.telefone }}{% if contato.email %} | {{ contato.email }}{% endif %}</div>
+                            {% if contato.tags %}
+                                <div class="d-flex flex-wrap gap-1 mt-2">
+                                    {% for tag in contato.tags %}
+                                        <span class="badge text-bg-light border">{{ tag }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         </td>
-                        <td>{{ contato.cidade }}{% if contato.bairro %}<div class="small text-secondary">{{ contato.bairro }}</div>{% endif %}</td>
+                        <td>
+                            <div>{{ contato.cidade }}</div>
+                            <div class="small text-secondary">
+                                {% if contato.bairro %}{{ contato.bairro }}{% else %}-{% endif %}
+                                {% if contato.origem_contato %} | {{ contato.origem_contato }}{% endif %}
+                            </div>
+                        </td>
                         <td><span class="badge text-bg-primary">{{ contato.get_status_funil_display }}</span></td>
                         <td>
                             {% if contato.consentimento_comunicacao %}
@@ -71,7 +140,9 @@
                         <td>{{ contato.responsavel_cadastro|default:"-" }}</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" href="{% url 'eleitores:detalhe' contato.pk %}">Ver</a>
-                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'eleitores:editar' contato.pk %}">Editar</a>
+                            {% if pode_editar %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'eleitores:editar' contato.pk %}">Editar</a>
+                            {% endif %}
                         </td>
                     </tr>
                 {% empty %}
@@ -82,5 +153,26 @@
             </tbody>
         </table>
     </div>
+    {% if page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer bg-transparent">
+            <nav aria-label="Paginacao do CRM">
+                <ul class="pagination mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring_atual %}&{{ querystring_atual }}{% endif %}">Anterior</a>
+                        </li>
+                    {% endif %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring_atual %}&{{ querystring_atual }}{% endif %}">Proxima</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

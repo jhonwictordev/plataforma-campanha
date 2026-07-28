@@ -4,11 +4,13 @@
     <div>
         <p class="eyebrow mb-1">Contato CRM</p>
         <h2 class="h3 mb-1">{{ contato.nome_completo }}</h2>
-        <p class="text-secondary mb-0">{{ contato.cidade }}{% if contato.bairro %} • {{ contato.bairro }}{% endif %}</p>
+        <p class="text-secondary mb-0">{{ contato.cidade }}{% if contato.bairro %} | {{ contato.bairro }}{% endif %}</p>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-outline-secondary" href="{% url 'eleitores:home' %}">Voltar</a>
-        <a class="btn btn-primary" href="{% url 'eleitores:editar' contato.pk %}">Editar</a>
+        {% if pode_editar %}
+            <a class="btn btn-primary" href="{% url 'eleitores:editar' contato.pk %}">Editar</a>
+        {% endif %}
     </div>
 </div>
 
@@ -23,8 +25,8 @@
                     <div class="col-md-6"><strong>E-mail</strong><div>{{ contato.email|default:"-" }}</div></div>
                     <div class="col-md-6"><strong>Status</strong><div>{{ contato.get_status_funil_display }}</div></div>
                     <div class="col-md-6"><strong>Origem</strong><div>{{ contato.origem_contato|default:"-" }}</div></div>
-                    <div class="col-md-6"><strong>Próxima ação</strong><div>{{ contato.proxima_acao|default:"-" }}</div></div>
-                    <div class="col-12"><strong>Observações</strong><div>{{ contato.observacoes|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Proxima acao</strong><div>{{ contato.proxima_acao|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Observacoes</strong><div>{{ contato.observacoes|default:"-" }}</div></div>
                 </div>
             </div>
         </div>
@@ -32,14 +34,14 @@
     <div class="col-lg-5">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <h3 class="h5 mb-3">Governança e consentimento</h3>
+                <h3 class="h5 mb-3">Governanca e consentimento</h3>
                 <ul class="list-unstyled mb-0 d-grid gap-2">
-                    <li><strong>Consentimento:</strong> {% if contato.consentimento_comunicacao %}Autorizado{% else %}Não autorizado{% endif %}</li>
+                    <li><strong>Consentimento:</strong> {% if contato.consentimento_comunicacao %}Autorizado{% else %}Nao autorizado{% endif %}</li>
                     <li><strong>Canal autorizado:</strong> {{ contato.canal_autorizado|default:"-" }}</li>
                     <li><strong>Data do consentimento:</strong> {{ contato.data_consentimento|default:"-" }}</li>
-                    <li><strong>Possível duplicado:</strong> {% if contato.possivel_duplicado %}Sim{% else %}Não{% endif %}</li>
-                    <li><strong>Responsável:</strong> {{ contato.responsavel_cadastro|default:"-" }}</li>
-                    <li><strong>Liderança relacionada:</strong> {{ contato.lideranca_relacionada|default:"-" }}</li>
+                    <li><strong>Possivel duplicado:</strong> {% if contato.possivel_duplicado %}Sim{% else %}Nao{% endif %}</li>
+                    <li><strong>Responsavel:</strong> {{ contato.responsavel_cadastro|default:"-" }}</li>
+                    <li><strong>Lideranca relacionada:</strong> {{ contato.lideranca_relacionada|default:"-" }}</li>
                 </ul>
             </div>
         </div>

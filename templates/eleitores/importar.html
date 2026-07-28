@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+            <div>
+                <p class="eyebrow mb-1">CRM eleitoral</p>
+                <h2 class="h3 mb-1">{{ titulo }}</h2>
+                <p class="text-secondary mb-0">{{ descricao }}</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{% url 'eleitores:home' %}">
+                <i class="bi bi-arrow-left"></i>
+                Voltar ao CRM
+            </a>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4 p-lg-5">
+                        <h3 class="h5 mb-3">Importar arquivo</h3>
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="row g-3">
+                                {% for field in form %}
+                                    <div class="col-12">
+                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        {% if field.field.widget.input_type == 'checkbox' %}
+                                            <div class="form-check">{{ field }}</div>
+                                        {% else %}
+                                            {{ field }}
+                                        {% endif %}
+                                        {% if field.help_text %}
+                                            <div class="form-text">{{ field.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in field.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="bi bi-upload"></i>
+                                    Processar importacao
+                                </button>
+                                <a class="btn btn-outline-secondary" href="{% url 'eleitores:home' %}">Cancelar</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h3 class="h5 mb-3">Colunas aceitas</h3>
+                        <p class="text-secondary small">
+                            O sistema reconhece as colunas abaixo em CSV ou XLSX. Contatos duplicados podem ser atualizados ou ignorados.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for coluna in colunas_exemplo %}
+                                <span class="badge text-bg-light border">{{ coluna }}</span>
+                            {% endfor %}
+                        </div>
+                        <hr>
+                        <p class="small text-secondary mb-0">
+                            Dica: use <code>lideranca_uuid</code>, <code>lideranca_nome</code> ou <code>lideranca_telefone</code> para vincular contatos ja existentes a uma lideranca da mesma campanha.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if resultado_importacao %}
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                        <div>
+                            <h3 class="h5 mb-1">Resumo da importacao</h3>
+                            <p class="text-secondary small mb-0">Processamento concluido com validacao de campanha, duplicidade e campos obrigatorios.</p>
+                        </div>
+                        <span class="badge text-bg-light border">{{ resultado_importacao.total_linhas }} linha{{ resultado_importacao.total_linhas|pluralize }}</span>
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <div class="metric-card h-100">
+                                <span>Criados</span>
+                                <strong>{{ resultado_importacao.criados }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card h-100">
+                                <span>Atualizados</span>
+                                <strong>{{ resultado_importacao.atualizados }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card h-100">
+                                <span>Ignorados</span>
+                                <strong>{{ resultado_importacao.ignorados }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card h-100">
+                                <span>Erros</span>
+                                <strong>{{ resultado_importacao.erros|length }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    {% if resultado_importacao.erros %}
+                        <div class="alert alert-warning border-0 shadow-sm mb-0">
+                            <strong>Linhas com erro</strong>
+                            <ul class="mb-0 mt-2 ps-3">
+                                {% for erro in resultado_importacao.erros %}
+                                    <li>{{ erro }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success border-0 shadow-sm mb-0">Nenhum erro encontrado nesta importacao.</div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
