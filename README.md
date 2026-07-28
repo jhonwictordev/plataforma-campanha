@@ -235,6 +235,16 @@ O repositorio tambem inclui:
 No fluxo gratuito do Render, `SECRET_KEY` e gerada automaticamente pelo provedor. `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` ja ficam definidos para `.onrender.com`.
 O deploy gratuito no Render nao usa `preDeployCommand`, porque esse recurso exige web service pago. As migrations rodam no `startCommand` por `scripts/start-render-free.sh`. Para producao completa com workers Celery, use `scripts/deploy_render_api.py --profile production-starter` ou configure web, worker e beat manualmente com os scripts existentes.
 
+Para criar o primeiro administrador no Render gratuito, configure variaveis privadas no web service e faca novo deploy:
+
+```env
+DJANGO_SUPERUSER_EMAIL=admin@seu-dominio.com
+DJANGO_SUPERUSER_PASSWORD=uma_senha_forte_privada
+DJANGO_SUPERUSER_NOME_COMPLETO=Administrador
+```
+
+O comando `bootstrap_admin` roda no start gratuito e nao cria usuario se essas variaveis nao existirem.
+
 Resumo rapido:
 
 ```bash

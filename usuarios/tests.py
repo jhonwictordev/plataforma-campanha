@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from io import StringIO
 from time import time
+from unittest.mock import patch
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django_otp.oath import TOTP
@@ -17,6 +20,80 @@ def gerar_token_totp(dispositivo: TOTPDevice) -> str:
     totp = TOTP(dispositivo.bin_key, dispositivo.step, dispositivo.t0, dispositivo.digits, dispositivo.drift)
     totp.time = time()
     return str(totp.token()).zfill(dispositivo.digits)
+
+
+class BootstrapAdminCommandTestCase(TestCase):
+    def test_ignora_quando_variaveis_nao_foram_definidas(self):
+        saida = StringIO()
+
+        with patch.dict("os.environ", {"DJANGO_SUPERUSER_EMAIL": "", "DJANGO_SUPERUSER_PASSWORD": ""}, clear=False):
+            call_command("bootstrap_admin", stdout=saida)
+
+        self.assertIn("Bootstrap admin ignorado", saida.getvalue())
+        self.assertFalse(Usuario.objects.exists())
+
+    def test_cria_administrador_com_variaveis_privadas(self):
+        saida = StringIO()
+
+        with patch.dict(
+            "os.environ",
+            {
+                "DJANGO_SUPERUSER_EMAIL": "admin.producao@example.com",
+                "DJANGO_SUPERUSER_PASSWORD": "SenhaTemporaria2026!",
+                "DJANGO_SUPERUSER_NOME_COMPLETO": "Admin Producao",
+            },
+            clear=False,
+        ):
+            call_command("bootstrap_admin", stdout=saida)
+
+        usuario = Usuario.objects.get(email="admin.producao@example.com")
+        self.assertTrue(usuario.check_password("SenhaTemporaria2026!"))
+        self.assertTrue(usuario.is_staff)
+        self.assertTrue(usuario.is_superuser)
+        self.assertEqual(usuario.nivel_acesso, Usuario.NiveisAcesso.ADMINISTRADOR)
+        self.assertTrue(usuario.consentimento_privacidade)
+        self.assertIn("Administrador inicial criado", saida.getvalue())
+
+    def test_nao_rotaciona_senha_existente_sem_flag(self):
+        usuario = Usuario.objects.create_superuser(
+            email="admin.existente@example.com",
+            password="SenhaOriginal2026!",
+            nome_completo="Admin Existente",
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "DJANGO_SUPERUSER_EMAIL": "admin.existente@example.com",
+                "DJANGO_SUPERUSER_PASSWORD": "SenhaNova2026!",
+            },
+            clear=False,
+        ):
+            call_command("bootstrap_admin", stdout=StringIO())
+
+        usuario.refresh_from_db()
+        self.assertTrue(usuario.check_password("SenhaOriginal2026!"))
+
+    def test_rotaciona_senha_quando_flag_esta_ativa(self):
+        usuario = Usuario.objects.create_superuser(
+            email="admin.rotacao@example.com",
+            password="SenhaOriginal2026!",
+            nome_completo="Admin Rotacao",
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "DJANGO_SUPERUSER_EMAIL": "admin.rotacao@example.com",
+                "DJANGO_SUPERUSER_PASSWORD": "SenhaNova2026!",
+                "DJANGO_SUPERUSER_ROTATE_PASSWORD": "true",
+            },
+            clear=False,
+        ):
+            call_command("bootstrap_admin", stdout=StringIO())
+
+        usuario.refresh_from_db()
+        self.assertTrue(usuario.check_password("SenhaNova2026!"))
 
 
 class DoisFatoresUsuarioTestCase(TestCase):

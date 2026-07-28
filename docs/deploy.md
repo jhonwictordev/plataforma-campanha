@@ -164,6 +164,16 @@ Esse modo nao cria Render Key Value nem workers Celery porque esses pontos estav
 No Blueprint gratuito, o Render gera `SECRET_KEY` automaticamente com `generateValue: true`. `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e cookies seguros ja ficam configurados para subdominios `.onrender.com`.
 O blueprint gratuito nao usa `preDeployCommand`, porque o Render disponibiliza esse recurso apenas para web services pagos. As migrations rodam no `startCommand` gratuito por `scripts/start-render-free.sh`.
 
+Para criar o primeiro administrador, defina variaveis privadas no web service antes de redeployar:
+
+```env
+DJANGO_SUPERUSER_EMAIL=admin@seu-dominio.com
+DJANGO_SUPERUSER_PASSWORD=uma_senha_forte_privada
+DJANGO_SUPERUSER_NOME_COMPLETO=Administrador
+```
+
+O comando `bootstrap_admin` roda no start gratuito e apenas cria/atualiza o administrador quando e-mail e senha estiverem definidos.
+
 Link direto para criar o Blueprint no Render:
 
 ```text
