@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Financeiro da campanha</p>
+        <h2 class="h3 mb-1">{{ lancamento.descricao }}</h2>
+        <p class="text-secondary mb-0">{{ lancamento.get_tipo_display }}{% if lancamento.categoria %} • {{ lancamento.categoria.nome }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'financeiro:home' %}">Voltar</a>
+        {% if pode_editar %}
+            <a class="btn btn-primary" href="{% url 'financeiro:lancamento_editar' lancamento.pk %}">Editar</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Dados do lancamento</h3>
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Valor</strong><div>R$ {{ lancamento.valor_reais }}</div></div>
+                    <div class="col-md-6"><strong>Status</strong><div>{{ lancamento.get_status_display }}</div></div>
+                    <div class="col-md-6"><strong>Vencimento</strong><div>{{ lancamento.data_vencimento|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Pagamento</strong><div>{{ lancamento.data_pagamento|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Parceiro</strong><div>{{ lancamento.parceiro|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Centro de custo</strong><div>{{ lancamento.centro_custo|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Responsavel</strong><div>{{ lancamento.responsavel_lancamento|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Forma de pagamento</strong><div>{{ lancamento.forma_pagamento|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Documento</strong><div>{{ lancamento.numero_documento|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Observacoes</strong><div>{{ lancamento.observacoes|default:"-" }}</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Governanca e auditoria</h3>
+                <ul class="list-unstyled mb-0 d-grid gap-2">
+                    <li><strong>Tipo:</strong> {{ lancamento.get_tipo_display }}</li>
+                    <li><strong>Categoria:</strong> {{ lancamento.categoria|default:"-" }}</li>
+                    <li><strong>Vencido em 28 de julho de 2026:</strong> {% if lancamento.esta_vencido %}Sim{% else %}Nao{% endif %}</li>
+                    <li><strong>Criado em:</strong> {{ lancamento.criado_em|date:"d/m/Y H:i" }}</li>
+                    <li><strong>Atualizado em:</strong> {{ lancamento.atualizado_em|date:"d/m/Y H:i" }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

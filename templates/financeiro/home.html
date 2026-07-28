@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Controle financeiro</p>
+        <h2 class="h3 mb-1">{{ titulo }}</h2>
+        <p class="text-secondary mb-0">{{ descricao }}</p>
+    </div>
+    {% if pode_editar %}
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" href="{% url 'financeiro:categoria_nova' %}">
+                <i class="bi bi-tags"></i>
+                Nova categoria
+            </a>
+            <a class="btn btn-outline-primary" href="{% url 'financeiro:parceiro_novo' %}">
+                <i class="bi bi-buildings"></i>
+                Novo parceiro
+            </a>
+            <a class="btn btn-primary" href="{% url 'financeiro:lancamento_novo' %}">
+                <i class="bi bi-cash-stack"></i>
+                Novo lancamento
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Receitas no filtro</div>
+                <div class="display-6 fw-semibold text-success">R$ {{ resumo.total_receitas }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Despesas no filtro</div>
+                <div class="display-6 fw-semibold text-danger">R$ {{ resumo.total_despesas }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Saldo</div>
+                <div class="display-6 fw-semibold text-primary">R$ {{ resumo.saldo }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Contas vencidas</div>
+                <div class="display-6 fw-semibold text-warning">R$ {{ resumo.contas_vencidas }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-lg-3">
+                <label class="form-label">Busca</label>
+                <input type="text" class="form-control" name="busca" value="{{ filtros.busca }}" placeholder="Descricao, documento ou observacoes">
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Tipo</label>
+                <select class="form-select" name="tipo">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in tipo_opcoes %}
+                        <option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in status_opcoes %}
+                        <option value="{{ valor }}" {% if filtros.status == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Categoria</label>
+                <select class="form-select" name="categoria">
+                    <option value="">Todas</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria.pk }}" {% if filtros.categoria == categoria.pk|stringformat:"s" %}selected{% endif %}>{{ categoria.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <label class="form-label">Parceiro</label>
+                <select class="form-select" name="parceiro">
+                    <option value="">Todos</option>
+                    {% for parceiro in parceiros %}
+                        <option value="{{ parceiro.pk }}" {% if filtros.parceiro == parceiro.pk|stringformat:"s" %}selected{% endif %}>{{ parceiro.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-1 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" type="submit">Filtrar</button>
+            </div>
+            <div class="col-lg-3">
+                <label class="form-label">Centro de custo</label>
+                <select class="form-select" name="centro_custo">
+                    <option value="">Todos</option>
+                    {% for centro in centros_custo %}
+                        <option value="{{ centro.pk }}" {% if filtros.centro_custo == centro.pk|stringformat:"s" %}selected{% endif %}>{{ centro.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-9 d-flex align-items-end">
+                <div class="small text-secondary">
+                    Em <strong>28 de julho de 2026</strong>, o total de contas a vencer no filtro atual e de <strong>R$ {{ resumo.contas_a_vencer }}</strong>.
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h5 mb-0">Lancamentos financeiros</h3>
+                    <span class="small text-secondary">{{ lancamentos|length }} item(ns) na pagina atual</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Descricao</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Vencimento</th>
+                                <th>Status</th>
+                                <th class="text-end">Acoes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lancamento in lancamentos %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ lancamento.descricao }}</strong>
+                                        <div class="small text-secondary">
+                                            {% if lancamento.categoria %}{{ lancamento.categoria.nome }}{% else %}Sem categoria{% endif %}
+                                            {% if lancamento.parceiro %} • {{ lancamento.parceiro.nome }}{% endif %}
+                                        </div>
+                                    </td>
+                                    <td><span class="badge text-bg-light">{{ lancamento.get_tipo_display }}</span></td>
+                                    <td>R$ {{ lancamento.valor_reais }}</td>
+                                    <td>
+                                        {{ lancamento.data_vencimento|default:"-" }}
+                                        {% if lancamento.esta_vencido %}
+                                            <div class="small text-danger">Vencido</div>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge text-bg-secondary">{{ lancamento.get_status_display }}</span></td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-primary" href="{% url 'financeiro:lancamento_detalhe' lancamento.pk %}">Ver</a>
+                                        {% if pode_editar %}
+                                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'financeiro:lancamento_editar' lancamento.pk %}">Editar</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-secondary">Nenhum lancamento encontrado para os filtros atuais.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 d-grid gap-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h5 mb-0">Top despesas por categoria</h3>
+                    {% if pode_editar %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'financeiro:categoria_nova' %}">Nova</a>
+                    {% endif %}
+                </div>
+                <ul class="list-unstyled mb-0 d-grid gap-2">
+                    {% for item in top_categorias %}
+                        <li class="d-flex justify-content-between gap-3">
+                            <span>{{ item.categoria__nome|default:"Sem categoria" }}</span>
+                            <strong>R$ {{ item.total }}</strong>
+                        </li>
+                    {% empty %}
+                        <li class="text-secondary">Nenhuma despesa categorizada no filtro atual.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h5 mb-0">Cadastros auxiliares</h3>
+                    {% if pode_editar %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'financeiro:centro_custo_novo' %}">Centro</a>
+                    {% endif %}
+                </div>
+                <div class="small text-secondary mb-2">Centros de custo</div>
+                <ul class="list-unstyled mb-3 d-grid gap-2">
+                    {% for centro in centros_custo|slice:":5" %}
+                        <li class="d-flex justify-content-between gap-2">
+                            <span>{{ centro.nome }}</span>
+                            {% if pode_editar %}
+                                <a href="{% url 'financeiro:centro_custo_editar' centro.pk %}">Editar</a>
+                            {% endif %}
+                        </li>
+                    {% empty %}
+                        <li class="text-secondary">Nenhum centro de custo cadastrado.</li>
+                    {% endfor %}
+                </ul>
+                <div class="small text-secondary mb-2">Parceiros financeiros</div>
+                <ul class="list-unstyled mb-0 d-grid gap-2">
+                    {% for parceiro in parceiros|slice:":5" %}
+                        <li class="d-flex justify-content-between gap-2">
+                            <span>{{ parceiro.nome }}</span>
+                            {% if pode_editar %}
+                                <a href="{% url 'financeiro:parceiro_editar' parceiro.pk %}">Editar</a>
+                            {% endif %}
+                        </li>
+                    {% empty %}
+                        <li class="text-secondary">Nenhum parceiro financeiro cadastrado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if is_paginated %}
+    <nav class="mt-4" aria-label="Paginacao financeira">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&busca={{ filtros.busca }}&tipo={{ filtros.tipo }}&status={{ filtros.status }}&categoria={{ filtros.categoria }}&parceiro={{ filtros.parceiro }}&centro_custo={{ filtros.centro_custo }}">Anterior</a>
+                </li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&busca={{ filtros.busca }}&tipo={{ filtros.tipo }}&status={{ filtros.status }}&categoria={{ filtros.categoria }}&parceiro={{ filtros.parceiro }}&centro_custo={{ filtros.centro_custo }}">Proxima</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}

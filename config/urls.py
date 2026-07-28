@@ -9,11 +9,21 @@ from rest_framework.routers import DefaultRouter
 from agenda.api_views import EventoAgendaViewSet
 from eleitores.api_views import ContatoCRMViewSet
 from equipe.api_views import IntegranteEquipeViewSet, TarefaEquipeViewSet
+from financeiro.api_views import (
+    CategoriaFinanceiraViewSet,
+    CentroCustoViewSet,
+    LancamentoFinanceiroViewSet,
+    ParceiroFinanceiroViewSet,
+)
 from liderancas.api_views import LiderancaViewSet
 from metas.api_views import MetaCampanhaViewSet
 
 api_router = DefaultRouter()
 api_router.register("agenda-eventos", EventoAgendaViewSet, basename="api-agenda-eventos")
+api_router.register("financeiro-categorias", CategoriaFinanceiraViewSet, basename="api-financeiro-categorias")
+api_router.register("financeiro-centros-custo", CentroCustoViewSet, basename="api-financeiro-centros-custo")
+api_router.register("financeiro-lancamentos", LancamentoFinanceiroViewSet, basename="api-financeiro-lancamentos")
+api_router.register("financeiro-parceiros", ParceiroFinanceiroViewSet, basename="api-financeiro-parceiros")
 api_router.register("contatos", ContatoCRMViewSet, basename="api-contatos")
 api_router.register("equipe-integrantes", IntegranteEquipeViewSet, basename="api-equipe-integrantes")
 api_router.register("equipe-tarefas", TarefaEquipeViewSet, basename="api-equipe-tarefas")

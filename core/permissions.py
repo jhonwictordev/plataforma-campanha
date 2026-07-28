@@ -77,6 +77,8 @@ PAPEIS_METAS_ESCRITA = (
     "mobilizador",
 )
 PAPEIS_FINANCEIRO = ("administrador", "coordenador_geral", "financeiro")
+PAPEIS_FINANCEIRO_LEITURA = PAPEIS_FINANCEIRO
+PAPEIS_FINANCEIRO_ESCRITA = PAPEIS_FINANCEIRO
 PAPEIS_COMUNICACAO = ("administrador", "coordenador_geral", "coordenador_regional", "comunicacao")
 PAPEIS_AUDITORIA = ("administrador", "coordenador_geral")
 
