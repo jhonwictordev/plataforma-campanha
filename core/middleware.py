@@ -17,11 +17,13 @@ class UltimoAcessoMiddleware:
             if getattr(usuario, "is_authenticated", False):
                 agora = timezone.now()
                 ultimo_acesso = getattr(usuario, "ultimo_acesso_registrado", None)
+                modelo_usuario = getattr(getattr(usuario, "_meta", None), "model", None)
                 if ultimo_acesso is None or agora - ultimo_acesso > timedelta(seconds=60):
-                    type(usuario).objects.filter(pk=usuario.pk).update(
-                        ultimo_acesso_registrado=agora,
-                        ultimo_ip=self._obter_ip(request),
-                    )
+                    if modelo_usuario is not None:
+                        modelo_usuario.objects.filter(pk=usuario.pk).update(
+                            ultimo_acesso_registrado=agora,
+                            ultimo_ip=self._obter_ip(request),
+                        )
             return response
         finally:
             limpar_requisicao_atual()

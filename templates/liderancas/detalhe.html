@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Liderança estratégica</p>
+        <h2 class="h3 mb-1">{{ lideranca.nome_conhecido|default:lideranca.nome_completo }}</h2>
+        <p class="text-secondary mb-0">{{ lideranca.cidade }}{% if lideranca.regiao_eleitoral %} • {{ lideranca.regiao_eleitoral }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'liderancas:home' %}">Voltar</a>
+        <a class="btn btn-primary" href="{% url 'liderancas:editar' lideranca.pk %}">Editar</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Dados principais</h3>
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Nome completo</strong><div>{{ lideranca.nome_completo }}</div></div>
+                    <div class="col-md-6"><strong>Tipo</strong><div>{{ lideranca.get_tipo_lideranca_display }}</div></div>
+                    <div class="col-md-6"><strong>Telefone</strong><div>{{ lideranca.telefone }}</div></div>
+                    <div class="col-md-6"><strong>E-mail</strong><div>{{ lideranca.email|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Influência</strong><div>{{ lideranca.get_nivel_influencia_display }}</div></div>
+                    <div class="col-md-6"><strong>Apoiadores estimados</strong><div>{{ lideranca.apoiadores_estimados }}</div></div>
+                    <div class="col-12"><strong>Organização / cargo</strong><div>{{ lideranca.organizacao|default:"-" }}{% if lideranca.cargo_funcao %} • {{ lideranca.cargo_funcao }}{% endif %}</div></div>
+                    <div class="col-12"><strong>Observações</strong><div>{{ lideranca.observacoes|default:"-" }}</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Governança e relacionamento</h3>
+                <ul class="list-unstyled mb-0 d-grid gap-2">
+                    <li><strong>Situação:</strong> {{ lideranca.get_situacao_relacionamento_display }}</li>
+                    <li><strong>Responsável:</strong> {{ lideranca.responsavel_contato|default:"-" }}</li>
+                    <li><strong>Consentimento LGPD:</strong> {% if lideranca.consentimento_dados %}Autorizado{% else %}Não autorizado{% endif %}</li>
+                    <li><strong>Data do consentimento:</strong> {{ lideranca.data_consentimento|default:"-" }}</li>
+                    <li><strong>Último contato:</strong> {{ lideranca.data_ultimo_contato|default:"-" }}</li>
+                    <li><strong>Próxima ação:</strong> {{ lideranca.proxima_acao|default:"-" }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -20,6 +20,14 @@ PAPEIS_CRM = (
     "mobilizador",
     "visualizador",
 )
+PAPEIS_CRM_LEITURA = PAPEIS_CRM
+PAPEIS_CRM_ESCRITA = (
+    "administrador",
+    "coordenador_geral",
+    "coordenador_regional",
+    "comunicacao",
+    "mobilizador",
+)
 PAPEIS_AGENDA = (
     "administrador",
     "coordenador_geral",

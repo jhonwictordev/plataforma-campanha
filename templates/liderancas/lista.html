@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Articulação territorial</p>
+        <h2 class="h3 mb-1">{{ titulo }}</h2>
+        <p class="text-secondary mb-0">{{ descricao }}</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'liderancas:novo' %}">
+        <i class="bi bi-plus-circle"></i>
+        Nova liderança
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-5">
+                <label class="form-label">Busca</label>
+                <input type="text" class="form-control" name="busca" value="{{ filtros.busca }}" placeholder="Nome, telefone ou e-mail">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Cidade</label>
+                <input type="text" class="form-control" name="cidade" value="{{ filtros.cidade }}" placeholder="Cidade">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Situação</label>
+                <select class="form-select" name="situacao">
+                    <option value="">Todas</option>
+                    {% for valor, rotulo in situacao_opcoes %}
+                        <option value="{{ valor }}" {% if filtros.situacao == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" type="submit">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Liderança</th>
+                    <th>Tipo</th>
+                    <th>Cidade</th>
+                    <th>Situação</th>
+                    <th>Responsável</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lideranca in liderancas %}
+                    <tr>
+                        <td>
+                            <strong>{{ lideranca.nome_conhecido|default:lideranca.nome_completo }}</strong>
+                            <div class="small text-secondary">{{ lideranca.nome_completo }}</div>
+                        </td>
+                        <td>{{ lideranca.get_tipo_lideranca_display }}</td>
+                        <td>{{ lideranca.cidade }}{% if lideranca.bairro %}<div class="small text-secondary">{{ lideranca.bairro }}</div>{% endif %}</td>
+                        <td><span class="badge text-bg-primary">{{ lideranca.get_situacao_relacionamento_display }}</span></td>
+                        <td>{{ lideranca.responsavel_contato|default:"-" }}</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'liderancas:detalhe' lideranca.pk %}">Ver</a>
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'liderancas:editar' lideranca.pk %}">Editar</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-secondary">Nenhuma liderança encontrada para os filtros informados.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

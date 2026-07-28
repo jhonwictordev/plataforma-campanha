@@ -4,6 +4,14 @@ from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from rest_framework.routers import DefaultRouter
+
+from eleitores.api_views import ContatoCRMViewSet
+from liderancas.api_views import LiderancaViewSet
+
+api_router = DefaultRouter()
+api_router.register("contatos", ContatoCRMViewSet, basename="api-contatos")
+api_router.register("liderancas", LiderancaViewSet, basename="api-liderancas")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -31,6 +39,7 @@ urlpatterns = [
         staff_member_required(SpectacularRedocView.as_view(url_name="schema")),
         name="redoc",
     ),
+    path("api/v1/", include(api_router.urls)),
     path("", include("dashboard.urls")),
 ]
 

@@ -16,6 +16,7 @@ class NivelAcessoMixin(UserPassesTestMixin):
     niveis_permitidos: tuple[str, ...] = ()
     exige_campanha = True
     mensagem_permissao_negada = "Você não possui permissão para acessar esta área."
+    raise_exception = True
 
     def test_func(self):
         usuario = self.request.user

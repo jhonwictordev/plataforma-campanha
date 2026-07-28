@@ -11,12 +11,22 @@ from .permissions import (
 class ViewSetCampanhaProtegido(viewsets.ModelViewSet):
     permission_classes = [PermissaoObjetoCampanhaDRF]
     niveis_permitidos: tuple[str, ...] = ()
+    niveis_permitidos_leitura: tuple[str, ...] = ()
+    niveis_permitidos_escrita: tuple[str, ...] = ()
     exigir_campanha = True
     campo_campanha = "campanha_id"
 
+    def _obter_niveis_permitidos(self) -> tuple[str, ...]:
+        if self.action in {"list", "retrieve"} and self.niveis_permitidos_leitura:
+            return self.niveis_permitidos_leitura
+        if self.action in {"create", "update", "partial_update", "destroy"} and self.niveis_permitidos_escrita:
+            return self.niveis_permitidos_escrita
+        return self.niveis_permitidos
+
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
-        if self.niveis_permitidos and not usuario_tem_nivel(request.user, self.niveis_permitidos):
+        niveis_permitidos = self._obter_niveis_permitidos()
+        if niveis_permitidos and not usuario_tem_nivel(request.user, niveis_permitidos):
             raise PermissionDenied("Você não possui permissão para acessar este recurso.")
         if (
             self.exigir_campanha

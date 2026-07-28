@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Contato CRM</p>
+        <h2 class="h3 mb-1">{{ contato.nome_completo }}</h2>
+        <p class="text-secondary mb-0">{{ contato.cidade }}{% if contato.bairro %} • {{ contato.bairro }}{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'eleitores:home' %}">Voltar</a>
+        <a class="btn btn-primary" href="{% url 'eleitores:editar' contato.pk %}">Editar</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Dados principais</h3>
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Telefone</strong><div>{{ contato.telefone }}</div></div>
+                    <div class="col-md-6"><strong>WhatsApp</strong><div>{{ contato.whatsapp|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>E-mail</strong><div>{{ contato.email|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Status</strong><div>{{ contato.get_status_funil_display }}</div></div>
+                    <div class="col-md-6"><strong>Origem</strong><div>{{ contato.origem_contato|default:"-" }}</div></div>
+                    <div class="col-md-6"><strong>Próxima ação</strong><div>{{ contato.proxima_acao|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Observações</strong><div>{{ contato.observacoes|default:"-" }}</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Governança e consentimento</h3>
+                <ul class="list-unstyled mb-0 d-grid gap-2">
+                    <li><strong>Consentimento:</strong> {% if contato.consentimento_comunicacao %}Autorizado{% else %}Não autorizado{% endif %}</li>
+                    <li><strong>Canal autorizado:</strong> {{ contato.canal_autorizado|default:"-" }}</li>
+                    <li><strong>Data do consentimento:</strong> {{ contato.data_consentimento|default:"-" }}</li>
+                    <li><strong>Possível duplicado:</strong> {% if contato.possivel_duplicado %}Sim{% else %}Não{% endif %}</li>
+                    <li><strong>Responsável:</strong> {{ contato.responsavel_cadastro|default:"-" }}</li>
+                    <li><strong>Liderança relacionada:</strong> {{ contato.lideranca_relacionada|default:"-" }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Relacionamento eleitoral</p>
+        <h2 class="h3 mb-1">{{ titulo }}</h2>
+        <p class="text-secondary mb-0">{{ descricao }}</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'eleitores:novo' %}">
+        <i class="bi bi-person-plus"></i>
+        Novo contato
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-5">
+                <label class="form-label">Busca</label>
+                <input type="text" class="form-control" name="busca" value="{{ filtros.busca }}" placeholder="Nome, telefone ou e-mail">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Cidade</label>
+                <input type="text" class="form-control" name="cidade" value="{{ filtros.cidade }}" placeholder="Cidade">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">Todos</option>
+                    {% for valor, rotulo in status_opcoes %}
+                        <option value="{{ valor }}" {% if filtros.status == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button class="btn btn-outline-primary w-100" type="submit">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Contato</th>
+                    <th>Cidade</th>
+                    <th>Status</th>
+                    <th>Consentimento</th>
+                    <th>Responsável</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contato in contatos %}
+                    <tr>
+                        <td>
+                            <strong>{{ contato.nome_completo }}</strong>
+                            <div class="small text-secondary">{{ contato.telefone }}{% if contato.email %} • {{ contato.email }}{% endif %}</div>
+                        </td>
+                        <td>{{ contato.cidade }}{% if contato.bairro %}<div class="small text-secondary">{{ contato.bairro }}</div>{% endif %}</td>
+                        <td><span class="badge text-bg-primary">{{ contato.get_status_funil_display }}</span></td>
+                        <td>
+                            {% if contato.consentimento_comunicacao %}
+                                <span class="badge text-bg-success">Autorizado</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Sem consentimento</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ contato.responsavel_cadastro|default:"-" }}</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'eleitores:detalhe' contato.pk %}">Ver</a>
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'eleitores:editar' contato.pk %}">Editar</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-secondary">Nenhum contato encontrado para os filtros informados.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

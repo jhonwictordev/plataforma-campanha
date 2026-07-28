@@ -5,6 +5,7 @@ from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.db.models import Model
+from django.db.models.fields.files import FieldFile
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
@@ -75,6 +76,22 @@ def _mascarar_valor(campo: str, valor):
     return "[dado_protegido]"
 
 
+def _serializar_valor(valor):
+    if isinstance(valor, FieldFile):
+        return valor.name or None
+    if isinstance(valor, Model):
+        return str(valor.pk)
+    if isinstance(valor, (Decimal, UUID)):
+        return str(valor)
+    if hasattr(valor, "isoformat"):
+        return valor.isoformat()
+    if isinstance(valor, dict):
+        return {chave: _serializar_valor(item) for chave, item in valor.items()}
+    if isinstance(valor, (list, tuple, set)):
+        return [_serializar_valor(item) for item in valor]
+    return valor
+
+
 def _serializar_instancia(instance: Model) -> dict:
     dados = {}
     for campo in instance._meta.fields:
@@ -84,9 +101,8 @@ def _serializar_instancia(instance: Model) -> dict:
         if nome in {"password"}:
             dados[nome] = "[hash_protegido]"
             continue
-        valor = getattr(instance, nome, None)
-        if hasattr(valor, "isoformat"):
-            valor = valor.isoformat()
+        valor = getattr(instance, campo.attname if campo.is_relation else nome, None)
+        valor = _serializar_valor(valor)
         dados[nome] = _mascarar_valor(nome, valor)
     return dados
 
