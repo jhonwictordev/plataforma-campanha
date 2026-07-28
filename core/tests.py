@@ -113,6 +113,10 @@ class ComandosOperacionaisTestCase(TestCase):
         self.executar_comando("sincronizar_rotinas_celery")
         self.assertTrue(PeriodicTask.objects.filter(name="Plataforma - Lembretes de agenda", enabled=True).exists())
         self.assertTrue(PeriodicTask.objects.filter(name="Plataforma - Alertas LGPD", enabled=True).exists())
+        self.assertEqual(
+            PeriodicTask.objects.get(name="Plataforma - Comunicacoes agendadas").task,
+            "comunicacao.tasks.processar_campanhas_agendadas_task",
+        )
 
 
 class RotinasCeleryNotificacoesTestCase(TestCase):

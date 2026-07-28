@@ -1,3 +1,4 @@
+from rest_framework import status
 from django.utils import timezone
 
 from core.api import ViewSetCampanhaProtegido
@@ -10,8 +11,16 @@ from core.permissions import (
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.views import APIView
 
-from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
+from .models import (
+    CampanhaComunicacao,
+    CanalComunicacao,
+    EnvioComunicacao,
+    ListaBloqueio,
+    ModeloMensagem,
+    NotificacaoInterna,
+)
 from .serializers import (
     CampanhaComunicacaoSerializer,
     EnvioComunicacaoSerializer,
@@ -19,7 +28,7 @@ from .serializers import (
     ModeloMensagemSerializer,
     NotificacaoInternaSerializer,
 )
-from .services import processar_campanha_comunicacao
+from .services import processar_campanha_comunicacao, receber_webhook_comunicacao
 
 
 class ModeloMensagemViewSet(ViewSetCampanhaProtegido):
@@ -101,3 +110,33 @@ class NotificacaoInternaViewSet(ViewSetCampanhaProtegido):
         instancia.save(update_fields=["lida_em", "atualizado_em"])
         serializer = self.get_serializer(instancia)
         return Response(serializer.data)
+
+
+class WebhookComunicacaoAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = []
+
+    def post(self, request, canal):
+        canais_validos = {
+            CanalComunicacao.EMAIL,
+            CanalComunicacao.WHATSAPP,
+            CanalComunicacao.SMS,
+        }
+        if canal not in canais_validos:
+            return Response(
+                {"detail": "Canal de webhook nao suportado."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        token = (request.headers.get("X-Webhook-Token") or "").strip()
+        resultado = receber_webhook_comunicacao(
+            canal=canal,
+            payload=request.data if isinstance(request.data, dict) else {},
+            token=token,
+            endereco_ip=request.META.get("REMOTE_ADDR"),
+        )
+        return Response(
+            {"detail": resultado["mensagem"], **{k: v for k, v in resultado.items() if k not in {"mensagem", "status_http"}}},
+            status=resultado["status_http"],
+        )

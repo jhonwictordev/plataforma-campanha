@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+from uuid import UUID
+
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
@@ -7,7 +10,14 @@ from django.utils.text import Truncator
 
 from eleitores.models import ContatoCRM
 
-from .models import CampanhaComunicacao, CanalComunicacao, EnvioComunicacao, ListaBloqueio, NotificacaoInterna
+from .models import (
+    CampanhaComunicacao,
+    CanalComunicacao,
+    EnvioComunicacao,
+    ListaBloqueio,
+    NotificacaoInterna,
+    RegistroWebhookComunicacao,
+)
 from .providers import ErroProvedorComunicacao, ResultadoProvedor, obter_provedor_para_canal
 
 
@@ -203,6 +213,324 @@ def notificar_resultado_processamento(campanha_comunicacao, titulo: str, mensage
             origem_modelo="CampanhaComunicacao",
             origem_id=str(campanha_comunicacao.pk),
         )
+
+
+def _valor_aninhado(payload, *caminhos):
+    for caminho in caminhos:
+        atual = payload
+        for parte in caminho:
+            if not isinstance(atual, dict) or parte not in atual:
+                atual = None
+                break
+            atual = atual[parte]
+        if atual not in (None, ""):
+            return atual
+    return None
+
+
+def _uuid_valido(valor) -> bool:
+    try:
+        UUID(str(valor))
+        return True
+    except (TypeError, ValueError, AttributeError):
+        return False
+
+
+def _mascarar_payload_webhook(valor, chave: str = ""):
+    chave_normalizada = (chave or "").lower()
+    if isinstance(valor, dict):
+        return {item_chave: _mascarar_payload_webhook(item_valor, item_chave) for item_chave, item_valor in valor.items()}
+    if isinstance(valor, list):
+        return [_mascarar_payload_webhook(item, chave) for item in valor]
+    if valor in (None, "", [], {}):
+        return valor
+
+    campos_destino = {"to", "destination", "email", "phone", "whatsapp", "telefone", "recipient"}
+    campos_texto = {"body", "content", "message", "text", "response_text", "reply_text"}
+    if chave_normalizada in campos_destino and isinstance(valor, str):
+        return f"***{valor[-4:]}" if len(valor) >= 4 else "***"
+    if chave_normalizada in campos_texto:
+        return "[conteudo_protegido]"
+    return valor
+
+
+def _mapa_tokens_webhook():
+    return {
+        CanalComunicacao.EMAIL: os.getenv("EMAIL_OFFICIAL_WEBHOOK_TOKEN", "").strip(),
+        CanalComunicacao.WHATSAPP: os.getenv("WHATSAPP_OFFICIAL_WEBHOOK_TOKEN", "").strip(),
+        CanalComunicacao.SMS: os.getenv("SMS_OFFICIAL_WEBHOOK_TOKEN", "").strip(),
+    }
+
+
+def normalizar_payload_webhook(canal: str, payload: dict) -> dict:
+    evento_bruto = (
+        _valor_aninhado(
+            payload,
+            ("event",),
+            ("status",),
+            ("type",),
+            ("data", "event"),
+            ("data", "status"),
+            ("message", "status"),
+        )
+        or ""
+    )
+    evento = str(evento_bruto).strip().lower()
+    identificador_externo = (
+        _valor_aninhado(
+            payload,
+            ("message_id",),
+            ("external_id",),
+            ("data", "message_id"),
+            ("data", "external_id"),
+            ("message", "id"),
+            ("id",),
+        )
+        or ""
+    )
+    send_id = (
+        _valor_aninhado(
+            payload,
+            ("send_id",),
+            ("metadata", "send_id"),
+            ("meta", "send_id"),
+            ("data", "send_id"),
+            ("data", "metadata", "send_id"),
+        )
+        or ""
+    )
+    provedor = (
+        _valor_aninhado(payload, ("provider",), ("source",), ("data", "provider"), ("message", "provider"))
+        or f"{canal}_oficial"
+    )
+    detalhe = _valor_aninhado(
+        payload,
+        ("detail",),
+        ("error",),
+        ("message",),
+        ("data", "detail"),
+        ("data", "error"),
+    ) or ""
+    resposta = _valor_aninhado(
+        payload,
+        ("response_text",),
+        ("reply_text",),
+        ("reply", "text"),
+        ("message", "text"),
+        ("data", "response_text"),
+    ) or ""
+    cancelou = bool(
+        _valor_aninhado(payload, ("unsubscribe",), ("opt_out",), ("data", "unsubscribe"), ("data", "opt_out"))
+    )
+
+    if evento in {"unsubscribe", "opt_out", "unsubscribed", "stop"}:
+        cancelou = True
+    if evento in {"reply", "replied", "response", "responded"} and resposta:
+        status_destino = EnvioComunicacao.Status.RESPONDIDO
+    elif cancelou:
+        status_destino = EnvioComunicacao.Status.RESPONDIDO
+    elif evento in {"delivered", "entregue", "delivery"}:
+        status_destino = EnvioComunicacao.Status.ENTREGUE
+    elif evento in {"sent", "submitted", "queued", "accepted"}:
+        status_destino = EnvioComunicacao.Status.ENVIADO
+    elif evento in {"failed", "error", "undelivered", "rejected"}:
+        status_destino = EnvioComunicacao.Status.FALHA
+    else:
+        status_destino = EnvioComunicacao.Status.ENVIADO
+
+    return {
+        "canal": canal,
+        "evento": evento or "desconhecido",
+        "provedor": str(provedor),
+        "send_id": str(send_id).strip(),
+        "identificador_externo": str(identificador_externo).strip(),
+        "status_destino": status_destino,
+        "detalhe": Truncator(str(detalhe)).chars(255),
+        "resposta": str(resposta).strip(),
+        "cancelou": cancelou,
+        "payload_mascarado": _mascarar_payload_webhook(payload),
+    }
+
+
+def _buscar_envio_webhook(canal: str, dados_normalizados: dict):
+    envio = None
+    send_id = dados_normalizados.get("send_id")
+    if _uuid_valido(send_id):
+        envio = EnvioComunicacao.objects.select_related(
+            "campanha",
+            "campanha_comunicacao",
+            "contato",
+            "campanha_comunicacao__responsavel",
+            "campanha_comunicacao__campanha__coordenador_responsavel",
+        ).filter(pk=send_id, canal=canal).first()
+    if envio is None and dados_normalizados.get("identificador_externo"):
+        envio = EnvioComunicacao.objects.select_related(
+            "campanha",
+            "campanha_comunicacao",
+            "contato",
+            "campanha_comunicacao__responsavel",
+            "campanha_comunicacao__campanha__coordenador_responsavel",
+        ).filter(
+            canal=canal,
+            identificador_externo=dados_normalizados["identificador_externo"],
+        ).order_by("-criado_em", "-pk").first()
+    return envio
+
+
+def _persistir_atualizacao_webhook(envio, dados_normalizados: dict):
+    agora = timezone.now()
+    campos = ["status", "provedor_utilizado", "atualizado_em"]
+    if dados_normalizados.get("identificador_externo"):
+        envio.identificador_externo = dados_normalizados["identificador_externo"]
+        campos.append("identificador_externo")
+    envio.provedor_utilizado = dados_normalizados["provedor"]
+
+    status_destino = dados_normalizados["status_destino"]
+    if status_destino == EnvioComunicacao.Status.ENVIADO:
+        if envio.status == EnvioComunicacao.Status.PROGRAMADO:
+            envio.status = EnvioComunicacao.Status.ENVIADO
+        if not envio.data_envio:
+            envio.data_envio = agora
+            campos.append("data_envio")
+        envio.erro_envio = ""
+        envio.ultimo_erro_tecnico = ""
+        campos.extend(["erro_envio", "ultimo_erro_tecnico"])
+    elif status_destino == EnvioComunicacao.Status.ENTREGUE:
+        if envio.status != EnvioComunicacao.Status.RESPONDIDO:
+            envio.status = EnvioComunicacao.Status.ENTREGUE
+        if not envio.data_envio:
+            envio.data_envio = agora
+            campos.append("data_envio")
+        if not envio.data_entrega:
+            envio.data_entrega = agora
+            campos.append("data_entrega")
+        envio.erro_envio = ""
+        envio.ultimo_erro_tecnico = ""
+        campos.extend(["erro_envio", "ultimo_erro_tecnico"])
+    elif status_destino == EnvioComunicacao.Status.RESPONDIDO:
+        envio.status = EnvioComunicacao.Status.RESPONDIDO
+        if not envio.data_envio:
+            envio.data_envio = agora
+            campos.append("data_envio")
+        if not envio.data_entrega:
+            envio.data_entrega = agora
+            campos.append("data_entrega")
+        if not envio.data_resposta:
+            envio.data_resposta = agora
+            campos.append("data_resposta")
+        resposta = dados_normalizados.get("resposta") or "Retorno recebido via webhook do provedor oficial."
+        envio.resposta_recebida = resposta
+        campos.append("resposta_recebida")
+        envio.erro_envio = ""
+        envio.ultimo_erro_tecnico = ""
+        campos.extend(["erro_envio", "ultimo_erro_tecnico"])
+        if dados_normalizados.get("cancelou"):
+            envio.cancelou_inscricao = True
+            campos.append("cancelou_inscricao")
+    elif status_destino == EnvioComunicacao.Status.FALHA and envio.status not in {
+        EnvioComunicacao.Status.ENTREGUE,
+        EnvioComunicacao.Status.RESPONDIDO,
+    }:
+        envio.status = EnvioComunicacao.Status.FALHA
+        detalhe = dados_normalizados.get("detalhe") or "Falha informada pelo provedor oficial."
+        envio.erro_envio = detalhe
+        envio.ultimo_erro_tecnico = detalhe
+        campos.extend(["erro_envio", "ultimo_erro_tecnico"])
+
+    envio.save(update_fields=list(dict.fromkeys(campos)))
+    envio.campanha_comunicacao.atualizar_metricas()
+    if envio.cancelou_inscricao:
+        registrar_descadastro(envio, usuario=None)
+
+
+def _notificar_webhook_relevante(envio, dados_normalizados: dict):
+    titulo = None
+    mensagem = None
+    if dados_normalizados["status_destino"] == EnvioComunicacao.Status.RESPONDIDO and dados_normalizados.get("cancelou"):
+        titulo = "Descadastro recebido por webhook"
+        mensagem = (
+            f"O contato '{envio.contato.nome_completo}' solicitou descadastro no canal "
+            f"{envio.get_canal_display()}."
+        )
+    elif dados_normalizados["status_destino"] == EnvioComunicacao.Status.RESPONDIDO and dados_normalizados.get("resposta"):
+        titulo = "Resposta recebida por webhook"
+        mensagem = (
+            f"O contato '{envio.contato.nome_completo}' respondeu a campanha "
+            f"'{envio.campanha_comunicacao.nome}'."
+        )
+    elif dados_normalizados["status_destino"] == EnvioComunicacao.Status.FALHA:
+        titulo = "Falha confirmada por webhook"
+        mensagem = (
+            f"O provedor confirmou falha no envio para '{envio.contato.nome_completo}' "
+            f"na campanha '{envio.campanha_comunicacao.nome}'."
+        )
+
+    if not titulo or not mensagem:
+        return
+
+    notificar_resultado_processamento(
+        envio.campanha_comunicacao,
+        titulo=titulo,
+        mensagem=mensagem,
+        chave=(
+            f"webhook:{envio.pk}:{dados_normalizados['evento']}:"
+            f"{dados_normalizados.get('identificador_externo') or timezone.localdate().isoformat()}"
+        ),
+    )
+
+
+def receber_webhook_comunicacao(canal: str, payload: dict, token: str = "", endereco_ip: str | None = None) -> dict:
+    tokens = _mapa_tokens_webhook()
+    token_configurado = tokens.get(canal, "")
+    token_valido = bool(token_configurado and token and token == token_configurado)
+    dados_normalizados = normalizar_payload_webhook(canal, payload)
+    envio = _buscar_envio_webhook(canal, dados_normalizados) if token_valido else None
+
+    registro = RegistroWebhookComunicacao.todos_objetos.create(
+        campanha=getattr(envio, "campanha", None),
+        envio=envio,
+        canal=canal,
+        provedor=dados_normalizados["provedor"],
+        evento=dados_normalizados["evento"],
+        identificador_externo=dados_normalizados.get("identificador_externo", ""),
+        dados_recebidos=dados_normalizados["payload_mascarado"],
+        assinatura_valida=token_valido,
+        processado_com_sucesso=False,
+        mensagem_processamento="Token de webhook invalido." if not token_valido else "",
+        endereco_ip=endereco_ip,
+    )
+
+    if not token_valido:
+        return {"aceito": False, "status_http": 403, "mensagem": "Token de webhook invalido."}
+
+    if envio is None:
+        registro.mensagem_processamento = "Nenhum envio correspondente foi localizado."
+        registro.save(update_fields=["mensagem_processamento", "atualizado_em"])
+        return {"aceito": True, "status_http": 202, "mensagem": "Webhook recebido sem envio correspondente."}
+
+    _persistir_atualizacao_webhook(envio, dados_normalizados)
+    _notificar_webhook_relevante(envio, dados_normalizados)
+
+    registro.campanha = envio.campanha
+    registro.envio = envio
+    registro.processado_com_sucesso = True
+    registro.mensagem_processamento = "Webhook processado com sucesso."
+    registro.save(
+        update_fields=[
+            "campanha",
+            "envio",
+            "processado_com_sucesso",
+            "mensagem_processamento",
+            "atualizado_em",
+        ]
+    )
+    return {
+        "aceito": True,
+        "status_http": 200,
+        "mensagem": "Webhook processado com sucesso.",
+        "envio_id": str(envio.pk),
+        "status": envio.status,
+    }
 
 
 def _aplicar_resultado_envio(envio, resultado: ResultadoProvedor):

@@ -33,8 +33,11 @@ CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/1
 DEFAULT_FROM_EMAIL=nao-responda@seu-dominio.com
 WHATSAPP_OFFICIAL_API_URL=https://api-oficial-whatsapp.exemplo.com/messages
 WHATSAPP_OFFICIAL_API_TOKEN=defina_token_oficial_whatsapp
+WHATSAPP_OFFICIAL_WEBHOOK_TOKEN=defina_token_webhook_whatsapp
 SMS_OFFICIAL_API_URL=https://api-oficial-sms.exemplo.com/messages
 SMS_OFFICIAL_API_TOKEN=defina_token_oficial_sms
+SMS_OFFICIAL_WEBHOOK_TOKEN=defina_token_webhook_sms
+EMAIL_OFFICIAL_WEBHOOK_TOKEN=defina_token_webhook_email
 ```
 
 ## 3. Preparacao da aplicacao
@@ -88,6 +91,12 @@ Para uma verificacao manual ou homologacao controlada, voce tambem pode forcar o
 ```bash
 python manage.py shell -c "from comunicacao.services import processar_campanhas_agendadas; print(processar_campanhas_agendadas())"
 ```
+
+Para reconciliar retorno oficial de status, configure os endpoints abaixo no provedor correspondente e envie o segredo em `X-Webhook-Token`:
+
+- `https://seu-dominio.com/api/v1/comunicacao/webhooks/whatsapp/`
+- `https://seu-dominio.com/api/v1/comunicacao/webhooks/sms/`
+- `https://seu-dominio.com/api/v1/comunicacao/webhooks/email/`
 
 ## 5. Proxy reverso
 

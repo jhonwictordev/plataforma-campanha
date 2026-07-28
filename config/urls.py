@@ -13,6 +13,7 @@ from comunicacao.api_views import (
     ListaBloqueioViewSet,
     ModeloMensagemViewSet,
     NotificacaoInternaViewSet,
+    WebhookComunicacaoAPIView,
 )
 from eleitores.api_views import ContatoCRMViewSet
 from equipe.api_views import IntegranteEquipeViewSet, TarefaEquipeViewSet
@@ -70,6 +71,7 @@ urlpatterns = [
         staff_member_required(SpectacularRedocView.as_view(url_name="schema")),
         name="redoc",
     ),
+    path("api/v1/comunicacao/webhooks/<str:canal>/", WebhookComunicacaoAPIView.as_view(), name="api-comunicacao-webhook"),
     path("api/v1/", include(api_router.urls)),
     path("", include("dashboard.urls")),
 ]

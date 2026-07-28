@@ -146,6 +146,22 @@ Todos os dados gerados por `popular_dados_demo` sao sinteticos e usam o dominio 
 
 Se uma campanha de WhatsApp ou SMS chegar ao horario de execucao sem a integracao oficial configurada, o sistema pausa a campanha, registra o erro e notifica o responsavel internamente em vez de tentar um disparo inseguro.
 
+## Webhooks oficiais
+
+O sistema agora aceita retornos oficiais de status para reconciliar entrega, falha, resposta e descadastro:
+
+- `POST /api/v1/comunicacao/webhooks/whatsapp/`
+- `POST /api/v1/comunicacao/webhooks/sms/`
+- `POST /api/v1/comunicacao/webhooks/email/`
+
+Cada endpoint exige o header `X-Webhook-Token` com o segredo correspondente:
+
+- `WHATSAPP_OFFICIAL_WEBHOOK_TOKEN`
+- `SMS_OFFICIAL_WEBHOOK_TOKEN`
+- `EMAIL_OFFICIAL_WEBHOOK_TOKEN`
+
+Os payloads recebidos sao mascarados no log tecnico para reduzir exposicao de dados pessoais, e a conciliacao atualiza o `EnvioComunicacao` com status e trilha de retorno sem permitir acesso cruzado entre campanhas.
+
 ## Testes e validacao
 
 ```bash

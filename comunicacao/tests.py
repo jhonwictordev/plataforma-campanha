@@ -1,13 +1,22 @@
+import os
 from django.core import mail
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
+from unittest.mock import patch
 
 from campanhas.models import Campanha
 from eleitores.models import ContatoCRM
 
-from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
+from .models import (
+    CampanhaComunicacao,
+    EnvioComunicacao,
+    ListaBloqueio,
+    ModeloMensagem,
+    NotificacaoInterna,
+    RegistroWebhookComunicacao,
+)
 from .services import processar_campanha_comunicacao, processar_campanhas_agendadas, sincronizar_envios_campanha
 
 Usuario = get_user_model()
@@ -464,3 +473,106 @@ class ComunicacaoPermissoesTestCase(TestCase):
         resposta = client.post(f"/api/v1/comunicacao-campanhas/{campanha_email.pk}/executar/", {}, format="json")
         self.assertEqual(resposta.status_code, 200)
         self.assertEqual(resposta.json()["processamento"]["processados"], 1)
+
+    @patch.dict(os.environ, {"WHATSAPP_OFFICIAL_WEBHOOK_TOKEN": "token-webhook-whatsapp"}, clear=False)
+    def test_webhook_invalido_rejeita_requisicao(self):
+        resposta = self.client.post(
+            "/api/v1/comunicacao/webhooks/whatsapp/",
+            {"event": "delivered", "send_id": str(self.envio_a.pk)},
+            content_type="application/json",
+            HTTP_X_WEBHOOK_TOKEN="token-errado",
+        )
+        self.assertEqual(resposta.status_code, 403)
+        self.envio_a.refresh_from_db()
+        self.assertEqual(self.envio_a.status, EnvioComunicacao.Status.PROGRAMADO)
+        self.assertTrue(
+            RegistroWebhookComunicacao.todos_objetos.filter(
+                canal="whatsapp",
+                assinatura_valida=False,
+            ).exists()
+        )
+
+    @patch.dict(os.environ, {"WHATSAPP_OFFICIAL_WEBHOOK_TOKEN": "token-webhook-whatsapp"}, clear=False)
+    def test_webhook_confirma_entrega_por_send_id(self):
+        self.envio_a.identificador_externo = "wa-msg-001"
+        self.envio_a.provedor_utilizado = "whatsapp_oficial"
+        self.envio_a.save(update_fields=["identificador_externo", "provedor_utilizado", "atualizado_em"])
+
+        resposta = self.client.post(
+            "/api/v1/comunicacao/webhooks/whatsapp/",
+            {
+                "provider": "whatsapp_oficial",
+                "event": "delivered",
+                "send_id": str(self.envio_a.pk),
+                "message_id": "wa-msg-001",
+                "detail": "Mensagem entregue ao destinatario.",
+            },
+            content_type="application/json",
+            HTTP_X_WEBHOOK_TOKEN="token-webhook-whatsapp",
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.envio_a.refresh_from_db()
+        self.assertEqual(self.envio_a.status, EnvioComunicacao.Status.ENTREGUE)
+        self.assertEqual(self.envio_a.identificador_externo, "wa-msg-001")
+        self.assertTrue(
+            RegistroWebhookComunicacao.todos_objetos.filter(
+                envio=self.envio_a,
+                assinatura_valida=True,
+                processado_com_sucesso=True,
+            ).exists()
+        )
+
+    @patch.dict(os.environ, {"WHATSAPP_OFFICIAL_WEBHOOK_TOKEN": "token-webhook-whatsapp"}, clear=False)
+    def test_webhook_descadastro_registra_bloqueio_e_notifica(self):
+        resposta = self.client.post(
+            "/api/v1/comunicacao/webhooks/whatsapp/",
+            {
+                "provider": "whatsapp_oficial",
+                "event": "unsubscribe",
+                "send_id": str(self.envio_a.pk),
+                "response_text": "STOP",
+                "message_id": "wa-msg-stop",
+            },
+            content_type="application/json",
+            HTTP_X_WEBHOOK_TOKEN="token-webhook-whatsapp",
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.envio_a.refresh_from_db()
+        self.assertEqual(self.envio_a.status, EnvioComunicacao.Status.RESPONDIDO)
+        self.assertTrue(self.envio_a.cancelou_inscricao)
+        self.assertTrue(
+            ListaBloqueio.objects.filter(
+                campanha=self.campanha_a,
+                contato=self.contato_autorizado_a,
+                canal="whatsapp",
+            ).exists()
+        )
+        self.assertTrue(
+            NotificacaoInterna.objects.filter(
+                campanha=self.campanha_a,
+                usuario_destinatario=self.usuario_comunicacao,
+                titulo__icontains="Descadastro recebido",
+            ).exists()
+        )
+
+    @patch.dict(os.environ, {"WHATSAPP_OFFICIAL_WEBHOOK_TOKEN": "token-webhook-whatsapp"}, clear=False)
+    def test_webhook_sem_envio_correspondente_retorna_aceite_tecnico(self):
+        resposta = self.client.post(
+            "/api/v1/comunicacao/webhooks/whatsapp/",
+            {
+                "provider": "whatsapp_oficial",
+                "event": "delivered",
+                "send_id": "11111111-1111-1111-1111-111111111111",
+                "message_id": "wa-msg-desconhecida",
+            },
+            content_type="application/json",
+            HTTP_X_WEBHOOK_TOKEN="token-webhook-whatsapp",
+        )
+        self.assertEqual(resposta.status_code, 202)
+        self.assertTrue(
+            RegistroWebhookComunicacao.todos_objetos.filter(
+                identificador_externo="wa-msg-desconhecida",
+                assinatura_valida=True,
+                processado_com_sucesso=False,
+            ).exists()
+        )

@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
-from core.models import ModeloCampanha
+from core.models import ModeloBase, ModeloCampanha
 
 
 class CanalComunicacao(models.TextChoices):
@@ -287,3 +287,42 @@ class NotificacaoInterna(ModeloCampanha):
         if salvar:
             self.save(update_fields=["lida_em", "atualizado_em"])
         return self
+
+
+class RegistroWebhookComunicacao(ModeloBase):
+    campanha = models.ForeignKey(
+        "campanhas.Campanha",
+        on_delete=models.SET_NULL,
+        related_name="webhooks_comunicacao",
+        null=True,
+        blank=True,
+    )
+    envio = models.ForeignKey(
+        EnvioComunicacao,
+        on_delete=models.SET_NULL,
+        related_name="webhook_registros",
+        null=True,
+        blank=True,
+    )
+    canal = models.CharField(max_length=30, choices=CanalComunicacao.choices, db_index=True)
+    provedor = models.CharField(max_length=40, blank=True, db_index=True)
+    evento = models.CharField(max_length=60, blank=True, db_index=True)
+    identificador_externo = models.CharField(max_length=120, blank=True, db_index=True)
+    dados_recebidos = models.JSONField(default=dict, blank=True)
+    assinatura_valida = models.BooleanField(default=False, db_index=True)
+    processado_com_sucesso = models.BooleanField(default=False, db_index=True)
+    mensagem_processamento = models.CharField(max_length=255, blank=True)
+    recebido_em = models.DateTimeField(default=timezone.now, db_index=True)
+    endereco_ip = models.GenericIPAddressField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Registro de webhook de comunicacao"
+        verbose_name_plural = "Registros de webhook de comunicacao"
+        indexes = [
+            models.Index(fields=["canal", "recebido_em"]),
+            models.Index(fields=["provedor", "evento"]),
+            models.Index(fields=["identificador_externo", "recebido_em"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_canal_display()} - {self.evento or 'sem_evento'}"
