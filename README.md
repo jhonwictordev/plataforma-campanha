@@ -228,12 +228,12 @@ O passo a passo completo de implantacao esta em [docs/deploy.md](docs/deploy.md)
 
 O repositorio tambem inclui:
 
-- `render.yaml` para blueprint de deploy com web, Redis, worker, beat e PostgreSQL
+- `render.yaml` para blueprint gratuito de demonstracao com web, Key Value e PostgreSQL
 - `.github/workflows/ci.yml` para checks e testes automaticos no GitHub
 - `scripts/build.sh`, `scripts/predeploy.sh`, `scripts/start-web.sh`, `scripts/start-worker.sh` e `scripts/start-beat.sh` para padronizar build, release e inicializacao
 
-No fluxo do Render, preencha a mesma `SECRET_KEY`, os mesmos `ALLOWED_HOSTS` e as mesmas `CSRF_TRUSTED_ORIGINS` para web, worker e beat.
-O predeploy padrao agora executa `python manage.py verificar_implantacao --strict`, entao o ambiente so deve seguir quando migrations, staticfiles, Redis e tarefas periodicas estiverem consistentes.
+No fluxo gratuito do Render, preencha apenas a `SECRET_KEY` quando solicitada. `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` ja ficam definidos para `.onrender.com`.
+O predeploy gratuito executa `python manage.py verificar_implantacao` sem modo estrito para permitir demonstracao sem e-mail transacional real. Para producao completa com workers Celery, use `scripts/deploy_render_api.py --profile production-starter` ou configure web, worker e beat manualmente com os scripts existentes.
 
 Resumo rapido:
 

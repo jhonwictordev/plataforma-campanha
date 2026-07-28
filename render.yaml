@@ -5,16 +5,16 @@ databases:
 services:
   - type: keyvalue
     name: plataforma-campanha-redis
-    plan: starter
+    plan: free
     ipAllowList: []
 
   - type: web
     name: plataforma-campanha-web
     runtime: python
-    plan: starter
+    plan: free
     autoDeployTrigger: checksPass
     buildCommand: sh scripts/build.sh
-    preDeployCommand: sh scripts/predeploy.sh
+    preDeployCommand: sh scripts/predeploy-demo.sh
     startCommand: sh scripts/start-web.sh
     healthCheckPath: /saude/prontidao/
     envVars:
@@ -54,139 +54,15 @@ services:
       - key: HEALTHCHECK_VERIFY_REDIS
         value: "True"
       - key: EMAIL_BACKEND
-        sync: false
+        value: django.core.mail.backends.console.EmailBackend
       - key: ALLOWED_HOSTS
-        sync: false
+        value: .onrender.com
       - key: CSRF_TRUSTED_ORIGINS
-        sync: false
+        value: https://*.onrender.com
       - key: DEFAULT_FROM_EMAIL
-        sync: false
+        value: nao-responda@plataformacampanha.local
       - key: WHATSAPP_OFFICIAL_API_URL
-        sync: false
-      - key: WHATSAPP_OFFICIAL_API_TOKEN
-        sync: false
-      - key: WHATSAPP_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
-      - key: SMS_OFFICIAL_API_URL
-        sync: false
-      - key: SMS_OFFICIAL_API_TOKEN
-        sync: false
-      - key: SMS_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
-      - key: EMAIL_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
-
-  - type: worker
-    name: plataforma-campanha-celery
-    runtime: python
-    plan: starter
-    autoDeployTrigger: checksPass
-    buildCommand: sh scripts/build.sh
-    startCommand: sh scripts/start-worker.sh
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.4
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.production
-      - key: DEBUG
-        value: "False"
-      - key: SECRET_KEY
-        sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: plataforma-campanha-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
-      - key: CELERY_LOG_LEVEL
-        value: info
-      - key: HEALTHCHECK_VERIFY_REDIS
-        value: "True"
-      - key: EMAIL_BACKEND
-        sync: false
-      - key: ALLOWED_HOSTS
-        sync: false
-      - key: CSRF_TRUSTED_ORIGINS
-        sync: false
-      - key: DEFAULT_FROM_EMAIL
-        sync: false
-      - key: WHATSAPP_OFFICIAL_API_URL
-        sync: false
-      - key: WHATSAPP_OFFICIAL_API_TOKEN
-        sync: false
-      - key: WHATSAPP_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
-      - key: SMS_OFFICIAL_API_URL
-        sync: false
-      - key: SMS_OFFICIAL_API_TOKEN
-        sync: false
-      - key: SMS_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
-      - key: EMAIL_OFFICIAL_WEBHOOK_TOKEN
-        sync: false
-
-  - type: worker
-    name: plataforma-campanha-celery-beat
-    runtime: python
-    plan: starter
-    autoDeployTrigger: checksPass
-    buildCommand: sh scripts/build.sh
-    startCommand: sh scripts/start-beat.sh
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.4
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.production
-      - key: DEBUG
-        value: "False"
-      - key: SECRET_KEY
-        sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: plataforma-campanha-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
-      - key: CELERY_LOG_LEVEL
-        value: info
-      - key: HEALTHCHECK_VERIFY_REDIS
-        value: "True"
-      - key: EMAIL_BACKEND
-        sync: false
-      - key: ALLOWED_HOSTS
-        sync: false
-      - key: CSRF_TRUSTED_ORIGINS
-        sync: false
-      - key: DEFAULT_FROM_EMAIL
-        sync: false
-      - key: WHATSAPP_OFFICIAL_API_URL
-        sync: false
+        value: ""
       - key: WHATSAPP_OFFICIAL_API_TOKEN
         sync: false
       - key: WHATSAPP_OFFICIAL_WEBHOOK_TOKEN

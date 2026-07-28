@@ -357,9 +357,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Deploy seguro da Plataforma Campanha no Render.")
     parser.add_argument(
         "--profile",
-        choices=["production-starter", "demo-free"],
-        default="production-starter",
-        help="production-starter cria ambiente completo e estavel; demo-free cria web/db/cache sem workers.",
+        choices=["demo-free", "production-starter"],
+        default="demo-free",
+        help="demo-free cria web/db/cache gratuitos sem workers; production-starter cria ambiente completo e pago.",
     )
     parser.add_argument("--owner-id", help="Workspace ID do Render. Se omitido, o script lista e pergunta.")
     parser.add_argument(
@@ -410,7 +410,9 @@ def main() -> int:
             ],
             start_command="sh scripts/start-web.sh",
             health_check_path="/saude/prontidao/",
-            pre_deploy_command="sh scripts/predeploy.sh",
+            pre_deploy_command=(
+                "sh scripts/predeploy-demo.sh" if args.profile == "demo-free" else "sh scripts/predeploy.sh"
+            ),
         )
 
         workers: list[dict[str, Any]] = []
