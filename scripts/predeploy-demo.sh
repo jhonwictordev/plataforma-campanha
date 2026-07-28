@@ -3,4 +3,4 @@ set -eu
 
 python manage.py migrate --noinput
 python manage.py sincronizar_rotinas_celery
-python manage.py verificar_implantacao
+python manage.py check --deploy

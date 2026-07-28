@@ -157,10 +157,9 @@ Se o binario nao estiver no `PATH`, defina a variavel opcional `PG_DUMP_BIN`.
 O repositorio inclui um `render.yaml` pronto para Blueprint gratuito de demonstracao com:
 
 - 1 web service Django/Gunicorn
-- 1 Render Key Value gratuito
 - 1 banco PostgreSQL gratuito
 
-Esse modo nao cria workers Celery porque background workers no Render sao pagos. O codigo continua preparado para Celery e Redis, mas comunicacoes e rotinas periodicas nao serao processadas continuamente no ambiente gratuito.
+Esse modo nao cria Render Key Value nem workers Celery porque esses pontos estavam bloqueando a validacao gratuita no Render e workers sao pagos. O codigo continua preparado para Celery e Redis, mas comunicacoes e rotinas periodicas nao serao processadas continuamente no ambiente gratuito.
 
 No Blueprint gratuito, o Render gera `SECRET_KEY` automaticamente com `generateValue: true`. `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e cookies seguros ja ficam configurados para subdominios `.onrender.com`.
 O blueprint usa scripts versionados em `scripts/` para build, predeploy e start, reduzindo divergencia entre ambiente local, Docker e Render.

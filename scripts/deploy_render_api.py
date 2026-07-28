@@ -243,22 +243,28 @@ def obter_conexao(token: str, endpoint: str, recurso_id: str) -> dict[str, str]:
     return conexao
 
 
-def env_vars_base(database_url: str, redis_url: str, secret_key: str) -> list[dict[str, str]]:
-    return [
+def env_vars_base(database_url: str, redis_url: str | None, secret_key: str) -> list[dict[str, str]]:
+    env_vars = [
         {"key": "PYTHON_VERSION", "value": "3.12.4"},
         {"key": "DJANGO_SETTINGS_MODULE", "value": "config.settings.production"},
         {"key": "DEBUG", "value": "False"},
         {"key": "SECRET_KEY", "value": secret_key},
         {"key": "DATABASE_URL", "value": database_url},
-        {"key": "REDIS_URL", "value": redis_url},
-        {"key": "CELERY_BROKER_URL", "value": redis_url},
-        {"key": "CELERY_RESULT_BACKEND", "value": redis_url},
-        {"key": "HEALTHCHECK_VERIFY_REDIS", "value": "True"},
+        {"key": "HEALTHCHECK_VERIFY_REDIS", "value": "True" if redis_url else "False"},
         {"key": "EMAIL_BACKEND", "value": "django.core.mail.backends.console.EmailBackend"},
         {"key": "ALLOWED_HOSTS", "value": ".onrender.com"},
         {"key": "CSRF_TRUSTED_ORIGINS", "value": "https://*.onrender.com"},
         {"key": "DEFAULT_FROM_EMAIL", "value": "nao-responda@plataformacampanha.local"},
     ]
+    if redis_url:
+        env_vars.extend(
+            [
+                {"key": "REDIS_URL", "value": redis_url},
+                {"key": "CELERY_BROKER_URL", "value": redis_url},
+                {"key": "CELERY_RESULT_BACKEND", "value": redis_url},
+            ]
+        )
+    return env_vars
 
 
 def criar_ou_reusar_servico(
@@ -383,15 +389,20 @@ def main() -> int:
         confirmar_custos(args.profile, args.confirm_paid)
         owner_id = selecionar_workspace(token, args.owner_id)
         postgres = criar_ou_reusar_postgres(token, owner_id, args.profile)
-        key_value = criar_ou_reusar_key_value(token, owner_id, args.profile)
+        key_value = None
+        if args.profile == "production-starter":
+            key_value = criar_ou_reusar_key_value(token, owner_id, args.profile)
 
         postgres_id = str(postgres["id"])
-        key_value_id = str(key_value["id"])
         aguardar_recurso(token, "/postgres", postgres_id, DB_NAME)
-        aguardar_recurso(token, "/key-value", key_value_id, KV_NAME)
 
         database_url = obter_conexao(token, "/postgres", postgres_id)["internalConnectionString"]
-        redis_url = obter_conexao(token, "/key-value", key_value_id)["internalConnectionString"]
+        redis_url = None
+        key_value_id = None
+        if key_value:
+            key_value_id = str(key_value["id"])
+            aguardar_recurso(token, "/key-value", key_value_id, KV_NAME)
+            redis_url = obter_conexao(token, "/key-value", key_value_id)["internalConnectionString"]
         secret_key = gerar_secret_key()
 
         env_vars = env_vars_base(database_url, redis_url, secret_key)

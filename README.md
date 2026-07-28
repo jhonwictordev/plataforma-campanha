@@ -228,7 +228,7 @@ O passo a passo completo de implantacao esta em [docs/deploy.md](docs/deploy.md)
 
 O repositorio tambem inclui:
 
-- `render.yaml` para blueprint gratuito de demonstracao com web, Key Value e PostgreSQL
+- `render.yaml` para blueprint gratuito de demonstracao com web e PostgreSQL
 - `.github/workflows/ci.yml` para checks e testes automaticos no GitHub
 - `scripts/build.sh`, `scripts/predeploy.sh`, `scripts/start-web.sh`, `scripts/start-worker.sh` e `scripts/start-beat.sh` para padronizar build, release e inicializacao
 

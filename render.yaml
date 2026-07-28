@@ -3,11 +3,6 @@ databases:
     plan: free
 
 services:
-  - type: keyvalue
-    name: plataforma-campanha-redis
-    plan: free
-    ipAllowList: []
-
   - type: web
     name: plataforma-campanha-web
     runtime: python
@@ -30,21 +25,6 @@ services:
         fromDatabase:
           name: plataforma-campanha-db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: plataforma-campanha-redis
-          property: connectionString
       - key: WEB_CONCURRENCY
         value: "2"
       - key: GUNICORN_TIMEOUT
@@ -52,7 +32,7 @@ services:
       - key: GUNICORN_GRACEFUL_TIMEOUT
         value: "30"
       - key: HEALTHCHECK_VERIFY_REDIS
-        value: "True"
+        value: "False"
       - key: EMAIL_BACKEND
         value: "django.core.mail.backends.console.EmailBackend"
       - key: ALLOWED_HOSTS
