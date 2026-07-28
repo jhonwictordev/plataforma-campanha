@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Visao institucional</p>
+        <h2 class="h3 mb-0">{{ campanha.nome_campanha }}</h2>
+        <p class="text-secondary mb-0">{{ campanha.nome_candidato }} • {{ campanha.get_cargo_disputado_display }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'campanhas:lista' %}">Voltar</a>
+        {% if pode_gerir_campanhas %}
+            <a class="btn btn-outline-primary" href="{% url 'campanhas:editar' campanha.pk %}">Editar</a>
+            <a class="btn btn-outline-danger" href="{% url 'campanhas:excluir' campanha.pk %}">Arquivar</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Situacao</div>
+                <div class="fw-semibold">{{ campanha.get_situacao_display }}</div>
+                <div class="small text-secondary mt-3">Territorio</div>
+                <div class="fw-semibold">{{ campanha.municipio }}/{{ campanha.estado }}</div>
+                <div class="small text-secondary mt-3">Numero</div>
+                <div class="fw-semibold">{{ campanha.numero_candidato }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Calendario</div>
+                <div class="fw-semibold">Inicio: {{ campanha.data_inicio|date:"d/m/Y" }}</div>
+                <div class="fw-semibold">Eleicao: {{ campanha.data_eleicao|date:"d/m/Y" }}</div>
+                <div class="small text-secondary mt-3">Coordenacao</div>
+                <div class="fw-semibold">{{ campanha.coordenador_responsavel|default:"Nao definido" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="small text-secondary mb-2">Identidade visual</div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle border" style="width: 44px; height: 44px; background: {{ campanha.cor_primaria }};"></div>
+                    <div class="rounded-circle border" style="width: 44px; height: 44px; background: {{ campanha.cor_secundaria }};"></div>
+                </div>
+                <div class="small text-secondary mt-3">{{ campanha.cor_primaria }} • {{ campanha.cor_secundaria }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Resumo da campanha</h3>
+                <p class="mb-3">{{ campanha.descricao|default:"Sem descricao informada." }}</p>
+                <h4 class="h6 text-secondary text-uppercase">Objetivos gerais</h4>
+                <p class="mb-0">{{ campanha.objetivos_gerais|default:"Sem objetivos registrados." }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Pulso operacional</h3>
+                <div class="d-grid gap-2">
+                    <div class="d-flex justify-content-between"><span>Usuarios ativos</span><strong>{{ resumo_operacao.usuarios }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Contatos CRM</span><strong>{{ resumo_operacao.contatos }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Liderancas</span><strong>{{ resumo_operacao.liderancas }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Eventos</span><strong>{{ resumo_operacao.eventos }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Tarefas</span><strong>{{ resumo_operacao.tarefas }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Metas</span><strong>{{ resumo_operacao.metas }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Lancamentos</span><strong>{{ resumo_operacao.lancamentos }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Campanhas de comunicacao</span><strong>{{ resumo_operacao.comunicacoes }}</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% if campanha.foto_candidato %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Foto do candidato</h3>
+                    <img class="img-fluid rounded-4 border" src="{{ campanha.foto_candidato.url }}" alt="Foto do candidato">
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    {% if campanha.logotipo %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h3 class="h5 mb-3">Logotipo</h3>
+                    <img class="img-fluid rounded-4 border" src="{{ campanha.logotipo.url }}" alt="Logotipo da campanha">
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -2,13 +2,43 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <p class="eyebrow mb-1">Configuração eleitoral</p>
+        <p class="eyebrow mb-1">Configuracao eleitoral</p>
         <h2 class="h3 mb-0">Campanhas cadastradas</h2>
     </div>
-    <a class="btn btn-primary" href="{% url 'campanhas:nova' %}">
-        <i class="bi bi-plus-circle"></i>
-        Nova campanha
-    </a>
+    {% if pode_gerir_campanhas %}
+        <a class="btn btn-primary" href="{% url 'campanhas:nova' %}">
+            <i class="bi bi-plus-circle"></i>
+            Nova campanha
+        </a>
+    {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form class="row g-3" method="get">
+            <div class="col-lg-5">
+                <label class="form-label" for="id_q">Busca</label>
+                <input class="form-control" id="id_q" type="text" name="q" value="{{ filtros.q }}" placeholder="Nome da campanha, candidato, partido ou numero">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="id_situacao">Situacao</label>
+                <select class="form-select" id="id_situacao" name="situacao">
+                    <option value="">Todas</option>
+                    {% for valor, rotulo in situacoes %}
+                        <option value="{{ valor }}" {% if filtros.situacao == valor %}selected{% endif %}>{{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="id_estado">UF</label>
+                <input class="form-control" id="id_estado" type="text" name="estado" maxlength="2" value="{{ filtros.estado }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button class="btn btn-primary w-100" type="submit">Filtrar</button>
+                <a class="btn btn-outline-secondary" href="{% url 'campanhas:lista' %}">Limpar</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -19,22 +49,35 @@
                     <th>Campanha</th>
                     <th>Candidato</th>
                     <th>Cargo</th>
-                    <th>Município</th>
-                    <th>Situação</th>
+                    <th>Territorio</th>
+                    <th>Situacao</th>
+                    <th class="text-end">Acoes</th>
                 </tr>
             </thead>
             <tbody>
                 {% for campanha in campanhas %}
                     <tr>
-                        <td>{{ campanha.nome_campanha }}</td>
+                        <td>
+                            <div class="fw-semibold">{{ campanha.nome_campanha }}</div>
+                            <div class="small text-secondary">{{ campanha.partido }} • {{ campanha.numero_candidato }}</div>
+                        </td>
                         <td>{{ campanha.nome_candidato }}</td>
                         <td>{{ campanha.get_cargo_disputado_display }}</td>
                         <td>{{ campanha.municipio }}/{{ campanha.estado }}</td>
                         <td><span class="badge text-bg-primary">{{ campanha.get_situacao_display }}</span></td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a class="btn btn-outline-secondary" href="{% url 'campanhas:detalhe' campanha.pk %}">Detalhes</a>
+                                {% if pode_gerir_campanhas %}
+                                    <a class="btn btn-outline-primary" href="{% url 'campanhas:editar' campanha.pk %}">Editar</a>
+                                    <a class="btn btn-outline-danger" href="{% url 'campanhas:excluir' campanha.pk %}">Arquivar</a>
+                                {% endif %}
+                            </div>
+                        </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-secondary">Nenhuma campanha cadastrada até o momento.</td>
+                        <td colspan="6" class="text-center py-5 text-secondary">Nenhuma campanha encontrada com os filtros atuais.</td>
                     </tr>
                 {% endfor %}
             </tbody>
