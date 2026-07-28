@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% load relatorios_extras %}
+{% block title %}Relatorios | {{ nome_aplicacao }}{% endblock %}
+{% block content %}
+<style>
+    .report-card {
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 1.25rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
+        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    [data-bs-theme="dark"] .report-card {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96));
+    }
+
+    .report-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(37, 99, 235, 0.24);
+        box-shadow: 0 1rem 2rem rgba(15, 23, 42, 0.08);
+    }
+
+    .report-card-active {
+        border-color: rgba(37, 99, 235, 0.42);
+        box-shadow: 0 1rem 2rem rgba(37, 99, 235, 0.08);
+    }
+
+    .report-favorite-card {
+        border-radius: 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(255, 255, 255, 0.84);
+    }
+
+    [data-bs-theme="dark"] .report-favorite-card {
+        background: rgba(15, 23, 42, 0.88);
+    }
+
+    .report-table th {
+        white-space: nowrap;
+    }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Analise operacional</p>
+        <h2 class="h3 mb-1">Central de relatorios</h2>
+        <p class="text-secondary mb-0">
+            {% if campanha_atual %}
+                {{ campanha_atual.nome_campanha }} | {{ campanha_atual.nome_candidato }}
+            {% else %}
+                Consolidado administrativo atualizado em {{ data_referencia }}.
+            {% endif %}
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" href="{% url 'relatorios:exportar_excel' %}?{{ filtros_querystring }}">
+            <i class="bi bi-file-earmark-excel"></i>
+            Excel
+        </a>
+        <a class="btn btn-outline-primary" href="{% url 'relatorios:exportar_pdf' %}?{{ filtros_querystring }}">
+            <i class="bi bi-file-earmark-pdf"></i>
+            PDF
+        </a>
+        <a class="btn btn-outline-secondary" target="_blank" href="{% url 'relatorios:impressao' %}?{{ filtros_querystring }}">
+            <i class="bi bi-printer"></i>
+            Imprimir
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-1">Tipos disponiveis</h3>
+                <p class="text-secondary small mb-3">Cada relatorio respeita campanha, escopo funcional e permissao do usuario logado.</p>
+                <div class="d-grid gap-3">
+                    {% for item in cards_relatorios %}
+                        <a class="report-card text-decoration-none text-body p-3 {% if item.ativo %}report-card-active{% endif %}" href="{% url 'relatorios:home' %}?{{ item.querystring }}">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <strong class="d-block mb-1">{{ item.rotulo }}</strong>
+                                    <span class="small text-secondary">{{ item.descricao }}</span>
+                                </div>
+                                {% if item.ativo %}
+                                    <span class="badge text-bg-primary align-self-start">Ativo</span>
+                                {% endif %}
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Filtros do relatorio</h3>
+                        <p class="text-secondary small mb-0">Filtre por periodo, territorio, campanha e responsavel antes de exportar.</p>
+                    </div>
+                    <span class="badge text-bg-light border">{{ total_linhas }} linha{{ total_linhas|pluralize }}</span>
+                </div>
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ filtro_form.tipo_relatorio.id_for_label }}">Relatorio</label>
+                        {{ filtro_form.tipo_relatorio }}
+                        {% if filtro_form.tipo_relatorio.errors %}
+                            <div class="small text-danger mt-1">{{ filtro_form.tipo_relatorio.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    {% if mostrar_filtro_campanha %}
+                        <div class="col-md-4">
+                            <label class="form-label" for="{{ filtro_form.campanha.id_for_label }}">Campanha</label>
+                            {{ filtro_form.campanha }}
+                        </div>
+                    {% endif %}
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ filtro_form.responsavel.id_for_label }}">Responsavel</label>
+                        {{ filtro_form.responsavel }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ filtro_form.data_inicial.id_for_label }}">Data inicial</label>
+                        {{ filtro_form.data_inicial }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ filtro_form.data_final.id_for_label }}">Data final</label>
+                        {{ filtro_form.data_final }}
+                        {% if filtro_form.data_final.errors %}
+                            <div class="small text-danger mt-1">{{ filtro_form.data_final.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ filtro_form.cidade.id_for_label }}">Cidade</label>
+                        {{ filtro_form.cidade }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ filtro_form.bairro.id_for_label }}">Bairro</label>
+                        {{ filtro_form.bairro }}
+                    </div>
+                    <div class="col-12 d-flex flex-wrap gap-2">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-funnel-fill"></i>
+                            Aplicar filtros
+                        </button>
+                        <a class="btn btn-outline-secondary" href="{% url 'relatorios:home' %}">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            Limpar
+                        </a>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                    <div>
+                        <h3 class="h5 mb-1">Filtros favoritos</h3>
+                        <p class="text-secondary small mb-0">Salve combinacoes recorrentes para nao remontar o filtro toda vez.</p>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'relatorios:favorito_salvar' %}" class="row g-3 mb-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="tipo_relatorio" value="{{ filtros.tipo_relatorio }}">
+                    <input type="hidden" name="campanha" value="{{ filtros.campanha_id }}">
+                    <input type="hidden" name="data_inicial" value="{{ filtros.data_inicial|date:'Y-m-d' }}">
+                    <input type="hidden" name="data_final" value="{{ filtros.data_final|date:'Y-m-d' }}">
+                    <input type="hidden" name="cidade" value="{{ filtros.cidade }}">
+                    <input type="hidden" name="bairro" value="{{ filtros.bairro }}">
+                    <input type="hidden" name="responsavel" value="{{ filtros.responsavel_id }}">
+                    <div class="col-md-8">
+                        <label class="form-label" for="{{ favorito_form.nome.id_for_label }}">Nome do favorito</label>
+                        {{ favorito_form.nome }}
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-outline-primary w-100" type="submit">
+                            <i class="bi bi-bookmark-plus"></i>
+                            Salvar favorito
+                        </button>
+                    </div>
+                </form>
+                <div class="d-grid gap-2">
+                    {% for favorito in favoritos %}
+                        <div class="report-favorite-card p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                                <div>
+                                    <strong class="d-block">{{ favorito.nome }}</strong>
+                                    <span class="small text-secondary">{{ favorito.tipo_relatorio|cut:"_"|title }}</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a class="btn btn-sm btn-outline-primary" href="{% url 'relatorios:home' %}?{{ favorito.querystring }}">
+                                        Aplicar
+                                    </a>
+                                    <form method="post" action="{% url 'relatorios:favorito_excluir' favorito.pk %}">
+                                        {% csrf_token %}
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="small text-secondary">Voce ainda nao salvou filtros favoritos.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+            <div>
+                <p class="eyebrow mb-1">Resultado atual</p>
+                <h3 class="h4 mb-1">{{ relatorio.titulo }}</h3>
+                <p class="text-secondary mb-0">{{ relatorio.descricao }}</p>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            {% for item in relatorio.filtros_label %}
+                <span class="badge text-bg-light border">{{ item }}</span>
+            {% endfor %}
+        </div>
+
+        <div class="row g-3 mb-4">
+            {% for item in relatorio.resumo %}
+                <div class="col-md-6 col-xl-3">
+                    <div class="metric-card h-100">
+                        <span>{{ item.rotulo }}</span>
+                        <strong>{{ item.valor }}</strong>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if relatorio.observacao %}
+            <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+                {{ relatorio.observacao }}
+            </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle report-table">
+                <thead>
+                    <tr>
+                        {% for coluna in relatorio.colunas %}
+                            <th>{{ coluna.rotulo }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in linhas %}
+                        <tr>
+                            {% for coluna in relatorio.colunas %}
+                                <td>{{ linha|get_item:coluna.chave }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td class="text-secondary" colspan="{{ relatorio.colunas|length }}">Nenhum registro encontrado para os filtros atuais.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+            <nav aria-label="Paginacao dos relatorios" class="mt-3">
+                <ul class="pagination mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{{ filtros_querystring }}&pagina={{ page_obj.previous_page_number }}">Anterior</a>
+                        </li>
+                    {% endif %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{{ filtros_querystring }}&pagina={{ page_obj.next_page_number }}">Proxima</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
