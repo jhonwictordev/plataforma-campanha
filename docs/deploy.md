@@ -162,7 +162,7 @@ O repositorio inclui um `render.yaml` pronto para Blueprint gratuito de demonstr
 Esse modo nao cria Render Key Value nem workers Celery porque esses pontos estavam bloqueando a validacao gratuita no Render e workers sao pagos. O codigo continua preparado para Celery e Redis, mas comunicacoes e rotinas periodicas nao serao processadas continuamente no ambiente gratuito.
 
 No Blueprint gratuito, o Render gera `SECRET_KEY` automaticamente com `generateValue: true`. `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` e cookies seguros ja ficam configurados para subdominios `.onrender.com`.
-O blueprint usa scripts versionados em `scripts/` para build, predeploy e start, reduzindo divergencia entre ambiente local, Docker e Render.
+O blueprint gratuito nao usa `preDeployCommand`, porque o Render disponibiliza esse recurso apenas para web services pagos. As migrations rodam no `startCommand` gratuito por `scripts/start-render-free.sh`.
 
 Link direto para criar o Blueprint no Render:
 

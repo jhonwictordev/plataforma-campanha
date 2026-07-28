@@ -9,8 +9,7 @@ services:
     plan: free
     autoDeployTrigger: commit
     buildCommand: sh scripts/build.sh
-    preDeployCommand: sh scripts/predeploy-demo.sh
-    startCommand: sh scripts/start-web.sh
+    startCommand: sh scripts/start-render-free.sh
     healthCheckPath: /saude/prontidao/
     envVars:
       - key: PYTHON_VERSION
