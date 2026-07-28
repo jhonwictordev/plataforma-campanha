@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
@@ -17,13 +17,33 @@ def obter_lista(nome: str, padrao: str = "") -> list[str]:
     bruto = os.getenv(nome, padrao)
     return [item.strip() for item in bruto.split(",") if item.strip()]
 
+
+def obter_texto_obrigatorio(nome: str) -> str:
+    valor = os.getenv(nome, "").strip()
+    if not valor:
+        raise ImproperlyConfigured(f"A variável de ambiente {nome} é obrigatória.")
+    return valor
+
+
+def validar_configuracao_producao() -> None:
+    hosts_invalidos = {"localhost", "127.0.0.1", "[::1]"}
+    if not ALLOWED_HOSTS or set(ALLOWED_HOSTS).issubset(hosts_invalidos):
+        raise ImproperlyConfigured(
+            "Defina ALLOWED_HOSTS com os domínios públicos válidos antes de iniciar em produção."
+        )
+    if not CSRF_TRUSTED_ORIGINS:
+        raise ImproperlyConfigured(
+            "Defina CSRF_TRUSTED_ORIGINS com as origens HTTPS válidas antes de iniciar em produção."
+        )
+    origens_invalidas = [origem for origem in CSRF_TRUSTED_ORIGINS if not origem.startswith("https://")]
+    if origens_invalidas:
+        raise ImproperlyConfigured(
+            "Em produção, CSRF_TRUSTED_ORIGINS deve usar apenas URLs HTTPS explícitas."
+        )
+
+
 DEBUG = obter_booleano("DEBUG", True)
-SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY:
-    if DEBUG:
-        SECRET_KEY = "django-desenvolvimento-altere-em-producao"
-    else:
-        raise ImproperlyConfigured("A variável SECRET_KEY é obrigatória em produção.")
+SECRET_KEY = obter_texto_obrigatorio("SECRET_KEY")
 ALLOWED_HOSTS = obter_lista("ALLOWED_HOSTS", "localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = obter_lista("CSRF_TRUSTED_ORIGINS", "http://localhost:8000")
 
@@ -94,11 +114,11 @@ TEMPLATES = [
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "plataforma_campanha"),
-        "USER": os.getenv("POSTGRES_USER", "plataforma"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "plataforma123"),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "NAME": obter_texto_obrigatorio("POSTGRES_DB"),
+        "USER": obter_texto_obrigatorio("POSTGRES_USER"),
+        "PASSWORD": obter_texto_obrigatorio("POSTGRES_PASSWORD"),
+        "HOST": obter_texto_obrigatorio("POSTGRES_HOST"),
+        "PORT": obter_texto_obrigatorio("POSTGRES_PORT"),
     }
 }
 
@@ -131,6 +151,11 @@ AUTH_USER_MODEL = "usuarios.Usuario"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard:home"
 LOGOUT_REDIRECT_URL = "login"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",

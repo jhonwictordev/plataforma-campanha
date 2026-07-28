@@ -9,10 +9,13 @@ from equipe.models import IntegranteEquipe, TarefaEquipe
 from financeiro.models import LancamentoFinanceiro
 from liderancas.models import Lideranca
 from metas.models import MetaCampanha
+from core.mixins import NivelAcessoMixin
+from core.permissions import PAPEIS_TODOS_MODULOS
 
 
-class DashboardHomeView(LoginRequiredMixin, TemplateView):
+class DashboardHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
     template_name = "dashboard/home.html"
+    niveis_permitidos = PAPEIS_TODOS_MODULOS
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

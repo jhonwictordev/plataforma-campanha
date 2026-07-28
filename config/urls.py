@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
@@ -19,9 +20,17 @@ urlpatterns = [
     path("mapa/", include("mapa_eleitoral.urls")),
     path("relatorios/", include("relatorios.urls")),
     path("auditoria/", include("auditoria.urls")),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    path("api/schema/", staff_member_required(SpectacularAPIView.as_view()), name="schema"),
+    path(
+        "api/docs/",
+        staff_member_required(SpectacularSwaggerView.as_view(url_name="schema")),
+        name="swagger-ui",
+    ),
+    path(
+        "api/redoc/",
+        staff_member_required(SpectacularRedocView.as_view(url_name="schema")),
+        name="redoc",
+    ),
     path("", include("dashboard.urls")),
 ]
 

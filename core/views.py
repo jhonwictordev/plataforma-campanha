@@ -1,8 +1,10 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
+from .mixins import NivelAcessoMixin
 
-class ModuloPlaceholderView(LoginRequiredMixin, TemplateView):
+
+class ModuloPlaceholderView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
     template_name = "dashboard/modulo_placeholder.html"
 
     def get_context_data(self, **kwargs):

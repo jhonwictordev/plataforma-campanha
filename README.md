@@ -60,9 +60,14 @@ plataforma_campanha/
 ## Segurança básica do repositório
 
 - O arquivo `.env` não deve ser versionado.
+- O `.gitignore` cobre `.env` e variantes como `.env.local`, `.env.prod` e similares.
 - O build Docker ignora `.env`, `.git`, `.venv` e caches locais.
 - O arquivo `.env.example` contém apenas placeholders e nunca deve receber segredos reais.
 - Em produção, `SECRET_KEY` ausente interrompe a inicialização da aplicação.
+- Em produção, `DEBUG=False` é forçado por [config/settings/production.py](/C:/Users/jhon/Documents/New%20project/plataforma_campanha/config/settings/production.py).
+- `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` são validados em produção e exigem domínios/origens explícitos.
+- Cookies de sessão e CSRF usam `HttpOnly`, `SameSite=Lax` e, em produção, `Secure=True`.
+- PostgreSQL e Redis não são publicados para fora do Docker Compose.
 
 ## Instalação local
 

@@ -1,26 +1,28 @@
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView
 
-from core.mixins import MensagemSucessoMixin
+from core.mixins import MensagemSucessoMixin, NivelAcessoMixin
+from core.permissions import PAPEIS_COORDENACAO, PAPEIS_TODOS_MODULOS
 
 from .forms import FormularioCampanha
 from .models import Campanha
 
 
-class GestaoCampanhaMixin(UserPassesTestMixin):
+class GestaoCampanhaMixin(NivelAcessoMixin):
+    niveis_permitidos = PAPEIS_COORDENACAO
+    exige_campanha = False
+
     def test_func(self):
-        usuario = self.request.user
-        return usuario.is_superuser or usuario.nivel_acesso in {
-            "administrador",
-            "coordenador_geral",
-        }
+        return NivelAcessoMixin.test_func(self)
 
 
-class CampanhaListView(LoginRequiredMixin, ListView):
+class CampanhaListView(LoginRequiredMixin, NivelAcessoMixin, ListView):
     model = Campanha
     template_name = "campanhas/lista.html"
     context_object_name = "campanhas"
+    niveis_permitidos = PAPEIS_TODOS_MODULOS
+    exige_campanha = False
 
     def get_queryset(self):
         usuario = self.request.user

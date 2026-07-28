@@ -1,0 +1,47 @@
+from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
+
+from .permissions import (
+    PermissaoObjetoCampanhaDRF,
+    filtrar_queryset_por_usuario,
+    usuario_tem_nivel,
+)
+
+
+class ViewSetCampanhaProtegido(viewsets.ModelViewSet):
+    permission_classes = [PermissaoObjetoCampanhaDRF]
+    niveis_permitidos: tuple[str, ...] = ()
+    exigir_campanha = True
+    campo_campanha = "campanha_id"
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if self.niveis_permitidos and not usuario_tem_nivel(request.user, self.niveis_permitidos):
+            raise PermissionDenied("Você não possui permissão para acessar este recurso.")
+        if (
+            self.exigir_campanha
+            and not (request.user.is_superuser or request.user.is_staff)
+            and not getattr(request.user, "campanha_id", None)
+        ):
+            raise PermissionDenied("Seu usuário precisa estar vinculado a uma campanha ativa.")
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return filtrar_queryset_por_usuario(
+            queryset=queryset,
+            usuario=self.request.user,
+            campo_campanha=self.campo_campanha,
+            exigir_campanha=self.exigir_campanha,
+        )
+
+    def perform_create(self, serializer):
+        usuario = self.request.user
+        campanha_id = serializer.validated_data.get("campanha_id") or serializer.validated_data.get("campanha")
+        if usuario.is_superuser or usuario.is_staff:
+            serializer.save()
+            return
+        if not getattr(usuario, "campanha_id", None):
+            raise PermissionDenied("Seu usuário precisa estar vinculado a uma campanha ativa.")
+        if campanha_id and getattr(campanha_id, "id", campanha_id) != usuario.campanha_id:
+            raise PermissionDenied("Não é permitido criar registros em outra campanha.")
+        serializer.save(campanha=usuario.campanha)
