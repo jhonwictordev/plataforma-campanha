@@ -1,7 +1,8 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.generic import CreateView, DetailView, TemplateView, UpdateView
 
@@ -13,8 +14,8 @@ from core.permissions import (
     usuario_tem_nivel,
 )
 
-from .forms import IntegranteEquipeFormulario, TarefaEquipeFormulario
-from .models import IntegranteEquipe, TarefaEquipe
+from .forms import ComentarioTarefaEquipeFormulario, IntegranteEquipeFormulario, TarefaEquipeFormulario
+from .models import ComentarioTarefaEquipe, IntegranteEquipe, TarefaEquipe
 from .services import agrupar_tarefas_por_status, contar_tarefas_em_aberto
 
 
@@ -56,7 +57,8 @@ class EquipeHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
                 Q(titulo__icontains=busca)
                 | Q(descricao__icontains=busca)
                 | Q(comentarios__icontains=busca)
-            )
+                | Q(comentarios_registrados__conteudo__icontains=busca)
+            ).distinct()
         if status_tarefa:
             queryset = queryset.filter(status=status_tarefa)
         if responsavel:
@@ -115,6 +117,12 @@ class IntegranteEquipeQuerysetMixin:
 class TarefaEquipeQuerysetMixin:
     def get_queryset(self):
         queryset = super().get_queryset().select_related("responsavel", "responsavel__usuario")
+        return filtrar_queryset_por_usuario(queryset, self.request.user)
+
+
+class ComentarioTarefaEquipeQuerysetMixin:
+    def get_queryset(self):
+        queryset = super().get_queryset().select_related("tarefa", "autor", "campanha")
         return filtrar_queryset_por_usuario(queryset, self.request.user)
 
 
@@ -213,6 +221,13 @@ class TarefaEquipeDetailView(
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["pode_editar"] = usuario_tem_nivel(self.request.user, PAPEIS_EQUIPE_ESCRITA)
+        comentarios_relacionados = self.object.comentarios_registrados.select_related("autor").order_by("-criado_em", "-pk")
+        context["comentarios_relacionados"] = comentarios_relacionados
+        context["resumo_tarefa"] = {
+            "itens_checklist": len(self.object.checklist or []),
+            "comentarios_registrados": comentarios_relacionados.count(),
+            "possui_observacoes_internas": bool(self.object.comentarios),
+        }
         return context
 
 
@@ -235,3 +250,57 @@ class TarefaEquipeUpdateView(
         kwargs = super().get_form_kwargs()
         kwargs["usuario"] = self.request.user
         return kwargs
+
+
+class ComentarioTarefaEquipeCreateView(LoginRequiredMixin, NivelAcessoMixin, MensagemSucessoMixin, CreateView):
+    model = ComentarioTarefaEquipe
+    form_class = ComentarioTarefaEquipeFormulario
+    template_name = "equipe/comentario_formulario.html"
+    niveis_permitidos = PAPEIS_EQUIPE_ESCRITA
+    mensagem_sucesso = "Comentario registrado com sucesso."
+
+    def get_tarefa(self):
+        if not hasattr(self, "_tarefa"):
+            queryset = filtrar_queryset_por_usuario(
+                TarefaEquipe.objects.select_related("campanha", "responsavel", "responsavel__usuario"),
+                self.request.user,
+            )
+            self._tarefa = get_object_or_404(queryset, pk=self.kwargs["tarefa_pk"])
+        return self._tarefa
+
+    def form_valid(self, form):
+        tarefa = self.get_tarefa()
+        form.instance.tarefa = tarefa
+        form.instance.campanha = tarefa.campanha
+        form.instance.autor = self.request.user
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return f"{reverse('equipe:tarefa_detalhe', kwargs={'pk': self.get_tarefa().pk})}#comentarios"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["tarefa"] = self.get_tarefa()
+        return context
+
+
+class ComentarioTarefaEquipeUpdateView(
+    LoginRequiredMixin,
+    NivelAcessoMixin,
+    ComentarioTarefaEquipeQuerysetMixin,
+    MensagemSucessoMixin,
+    UpdateView,
+):
+    model = ComentarioTarefaEquipe
+    form_class = ComentarioTarefaEquipeFormulario
+    template_name = "equipe/comentario_formulario.html"
+    niveis_permitidos = PAPEIS_EQUIPE_ESCRITA
+    mensagem_sucesso = "Comentario atualizado com sucesso."
+
+    def get_success_url(self):
+        return f"{reverse('equipe:tarefa_detalhe', kwargs={'pk': self.object.tarefa_id})}#comentarios"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["tarefa"] = self.object.tarefa
+        return context

@@ -2,19 +2,46 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <p class="eyebrow mb-1">Liderança estratégica</p>
+        <p class="eyebrow mb-1">Lideranca estrategica</p>
         <h2 class="h3 mb-1">{{ lideranca.nome_conhecido|default:lideranca.nome_completo }}</h2>
-        <p class="text-secondary mb-0">{{ lideranca.cidade }}{% if lideranca.regiao_eleitoral %} • {{ lideranca.regiao_eleitoral }}{% endif %}</p>
+        <p class="text-secondary mb-0">{{ lideranca.cidade }}{% if lideranca.regiao_eleitoral %} | {{ lideranca.regiao_eleitoral }}{% endif %}</p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-outline-secondary" href="{% url 'liderancas:home' %}">Voltar</a>
-        <a class="btn btn-primary" href="{% url 'liderancas:editar' lideranca.pk %}">Editar</a>
+        {% if pode_editar %}
+            <a class="btn btn-outline-primary" href="{% url 'liderancas:interacao_nova' lideranca.pk %}">
+                <i class="bi bi-chat-left-text"></i>
+                Nova interacao
+            </a>
+            <a class="btn btn-primary" href="{% url 'liderancas:editar' lideranca.pk %}">Editar</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="metric-card h-100">
+            <span>Interacoes registradas</span>
+            <strong>{{ resumo_relacionamento.interacoes }}</strong>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card h-100">
+            <span>Reunioes registradas</span>
+            <strong>{{ resumo_relacionamento.reunioes }}</strong>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card h-100">
+            <span>Ultimo contato</span>
+            <strong>{% if resumo_relacionamento.ultima_interacao %}{{ resumo_relacionamento.ultima_interacao|date:"d/m/Y H:i" }}{% else %}-{% endif %}</strong>
+        </div>
     </div>
 </div>
 
 <div class="row g-4">
     <div class="col-lg-7">
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <h3 class="h5 mb-3">Dados principais</h3>
                 <div class="row g-3">
@@ -22,25 +49,59 @@
                     <div class="col-md-6"><strong>Tipo</strong><div>{{ lideranca.get_tipo_lideranca_display }}</div></div>
                     <div class="col-md-6"><strong>Telefone</strong><div>{{ lideranca.telefone }}</div></div>
                     <div class="col-md-6"><strong>E-mail</strong><div>{{ lideranca.email|default:"-" }}</div></div>
-                    <div class="col-md-6"><strong>Influência</strong><div>{{ lideranca.get_nivel_influencia_display }}</div></div>
+                    <div class="col-md-6"><strong>Influencia</strong><div>{{ lideranca.get_nivel_influencia_display }}</div></div>
                     <div class="col-md-6"><strong>Apoiadores estimados</strong><div>{{ lideranca.apoiadores_estimados }}</div></div>
-                    <div class="col-12"><strong>Organização / cargo</strong><div>{{ lideranca.organizacao|default:"-" }}{% if lideranca.cargo_funcao %} • {{ lideranca.cargo_funcao }}{% endif %}</div></div>
-                    <div class="col-12"><strong>Observações</strong><div>{{ lideranca.observacoes|default:"-" }}</div></div>
+                    <div class="col-12"><strong>Organizacao / cargo</strong><div>{{ lideranca.organizacao|default:"-" }}{% if lideranca.cargo_funcao %} | {{ lideranca.cargo_funcao }}{% endif %}</div></div>
+                    <div class="col-12"><strong>Observacoes</strong><div>{{ lideranca.observacoes|default:"-" }}</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                    <h3 class="h5 mb-0">Historico de interacoes</h3>
+                    {% if pode_editar %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'liderancas:interacao_nova' lideranca.pk %}">Registrar</a>
+                    {% endif %}
+                </div>
+                <div class="d-grid gap-3">
+                    {% for interacao in interacoes_relacionadas %}
+                        <div class="border rounded-3 p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                <div>
+                                    <strong class="d-block">{{ interacao.get_tipo_display }}</strong>
+                                    <span class="small text-secondary">{{ interacao.data_hora|date:"d/m/Y H:i" }}</span>
+                                </div>
+                                {% if pode_editar %}
+                                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'liderancas:interacao_editar' interacao.pk %}">Editar</a>
+                                {% endif %}
+                            </div>
+                            <div class="mt-2 fw-semibold">{{ interacao.resumo }}</div>
+                            {% if interacao.detalhes %}
+                                <div class="mt-2">{{ interacao.detalhes }}</div>
+                            {% endif %}
+                            <div class="small text-secondary mt-2">Responsavel: {{ interacao.responsavel|default:"-" }}</div>
+                        </div>
+                    {% empty %}
+                        <div class="text-secondary">Nenhuma interacao registrada para esta lideranca.</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
+
     <div class="col-lg-5">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <h3 class="h5 mb-3">Governança e relacionamento</h3>
+                <h3 class="h5 mb-3">Governanca e relacionamento</h3>
                 <ul class="list-unstyled mb-0 d-grid gap-2">
-                    <li><strong>Situação:</strong> {{ lideranca.get_situacao_relacionamento_display }}</li>
-                    <li><strong>Responsável:</strong> {{ lideranca.responsavel_contato|default:"-" }}</li>
-                    <li><strong>Consentimento LGPD:</strong> {% if lideranca.consentimento_dados %}Autorizado{% else %}Não autorizado{% endif %}</li>
+                    <li><strong>Situacao:</strong> {{ lideranca.get_situacao_relacionamento_display }}</li>
+                    <li><strong>Responsavel:</strong> {{ lideranca.responsavel_contato|default:"-" }}</li>
+                    <li><strong>Consentimento LGPD:</strong> {% if lideranca.consentimento_dados %}Autorizado{% else %}Nao autorizado{% endif %}</li>
                     <li><strong>Data do consentimento:</strong> {{ lideranca.data_consentimento|default:"-" }}</li>
-                    <li><strong>Último contato:</strong> {{ lideranca.data_ultimo_contato|default:"-" }}</li>
-                    <li><strong>Próxima ação:</strong> {{ lideranca.proxima_acao|default:"-" }}</li>
+                    <li><strong>Ultimo contato:</strong> {{ lideranca.data_ultimo_contato|default:"-" }}</li>
+                    <li><strong>Proxima acao:</strong> {{ lideranca.proxima_acao|default:"-" }}</li>
                 </ul>
             </div>
         </div>

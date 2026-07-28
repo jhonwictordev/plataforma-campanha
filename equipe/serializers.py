@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import IntegranteEquipe, TarefaEquipe
+from .models import ComentarioTarefaEquipe, IntegranteEquipe, TarefaEquipe
 
 
 class IntegranteEquipeSerializer(serializers.ModelSerializer):
@@ -82,3 +82,45 @@ class TarefaEquipeSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
+
+
+class ComentarioTarefaEquipeSerializer(serializers.ModelSerializer):
+    autor_nome = serializers.CharField(source="autor.nome_completo", read_only=True)
+
+    class Meta:
+        model = ComentarioTarefaEquipe
+        fields = [
+            "id",
+            "campanha",
+            "tarefa",
+            "autor",
+            "autor_nome",
+            "conteudo",
+            "criado_em",
+            "atualizado_em",
+        ]
+        read_only_fields = ("id", "autor", "autor_nome", "criado_em", "atualizado_em")
+
+    def validate(self, attrs):
+        usuario_logado = self.context["request"].user
+        tarefa = attrs.get("tarefa") or getattr(self.instance, "tarefa", None)
+        campanha = attrs.get("campanha") or getattr(self.instance, "campanha", None)
+
+        if tarefa and campanha and tarefa.campanha_id != getattr(campanha, "id", campanha):
+            raise serializers.ValidationError(
+                {"tarefa": "A tarefa informada precisa pertencer a mesma campanha do comentario."}
+            )
+
+        if not (usuario_logado.is_superuser or usuario_logado.is_staff):
+            attrs["campanha"] = usuario_logado.campanha
+            if tarefa and tarefa.campanha_id != usuario_logado.campanha_id:
+                raise serializers.ValidationError(
+                    {"tarefa": "A tarefa precisa pertencer a mesma campanha do usuario autenticado."}
+                )
+
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.setdefault("autor", self.context["request"].user)
+        validated_data["campanha"] = validated_data["tarefa"].campanha
+        return super().create(validated_data)

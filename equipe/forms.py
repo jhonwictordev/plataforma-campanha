@@ -2,7 +2,7 @@ from django import forms
 
 from core.forms import FormularioBootstrapMixin
 
-from .models import IntegranteEquipe, TarefaEquipe
+from .models import ComentarioTarefaEquipe, IntegranteEquipe, TarefaEquipe
 from .services import normalizar_checklist
 
 
@@ -109,3 +109,17 @@ class TarefaEquipeFormulario(FormularioBootstrapMixin):
         if commit:
             instancia.save()
         return instancia
+
+
+class ComentarioTarefaEquipeFormulario(FormularioBootstrapMixin):
+    class Meta:
+        model = ComentarioTarefaEquipe
+        fields = ["conteudo"]
+        widgets = {
+            "conteudo": forms.Textarea(
+                attrs={
+                    "rows": 5,
+                    "placeholder": "Registre um andamento claro, objetivo e util para a equipe.",
+                }
+            )
+        }

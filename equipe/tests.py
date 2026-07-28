@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 
 from campanhas.models import Campanha
 
-from .models import IntegranteEquipe, TarefaEquipe
+from .models import ComentarioTarefaEquipe, IntegranteEquipe, TarefaEquipe
 
 Usuario = get_user_model()
 
@@ -97,6 +97,18 @@ class EquipePermissoesTestCase(TestCase):
             prioridade="media",
             status="em_andamento",
         )
+        self.comentario_a = ComentarioTarefaEquipe.objects.create(
+            campanha=self.campanha_a,
+            tarefa=self.tarefa_a,
+            autor=self.usuario_editor,
+            conteudo="Primeiro andamento da tarefa A.",
+        )
+        self.comentario_b = ComentarioTarefaEquipe.objects.create(
+            campanha=self.campanha_b,
+            tarefa=self.tarefa_b,
+            autor=self.usuario_outra_campanha,
+            conteudo="Andamento da tarefa B.",
+        )
 
     def test_home_mostra_apenas_dados_da_mesma_campanha(self):
         self.client.force_login(self.usuario_editor)
@@ -116,6 +128,13 @@ class EquipePermissoesTestCase(TestCase):
         resposta = self.client.get(reverse("equipe:tarefa_detalhe", args=[self.tarefa_b.pk]))
         self.assertEqual(resposta.status_code, 404)
 
+    def test_detalhe_tarefa_mostra_apenas_comentarios_da_mesma_campanha(self):
+        self.client.force_login(self.usuario_editor)
+        resposta = self.client.get(reverse("equipe:tarefa_detalhe", args=[self.tarefa_a.pk]))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Primeiro andamento da tarefa A.")
+        self.assertNotContains(resposta, "Andamento da tarefa B.")
+
     def test_visualizador_nao_pode_criar_integrante_na_web(self):
         self.client.force_login(self.visualizador)
         resposta = self.client.get(reverse("equipe:integrante_novo"))
@@ -125,6 +144,28 @@ class EquipePermissoesTestCase(TestCase):
         self.client.force_login(self.visualizador)
         resposta = self.client.get(reverse("equipe:tarefa_nova"))
         self.assertEqual(resposta.status_code, 403)
+
+    def test_web_cria_comentario_para_tarefa_da_mesma_campanha(self):
+        self.client.force_login(self.usuario_editor)
+        resposta = self.client.post(
+            reverse("equipe:comentario_novo", args=[self.tarefa_a.pk]),
+            {"conteudo": "Novo comentario web na tarefa A."},
+            follow=True,
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(
+            ComentarioTarefaEquipe.objects.filter(
+                tarefa=self.tarefa_a,
+                campanha=self.campanha_a,
+                conteudo="Novo comentario web na tarefa A.",
+                autor=self.usuario_editor,
+            ).exists()
+        )
+
+    def test_web_bloqueia_comentario_em_tarefa_de_outra_campanha(self):
+        self.client.force_login(self.usuario_editor)
+        resposta = self.client.get(reverse("equipe:comentario_novo", args=[self.tarefa_b.pk]))
+        self.assertEqual(resposta.status_code, 404)
 
     def test_api_lista_integrantes_isola_por_campanha(self):
         client = APIClient()
@@ -143,6 +184,15 @@ class EquipePermissoesTestCase(TestCase):
         resultados = resposta.json()["results"]
         self.assertEqual(len(resultados), 1)
         self.assertEqual(resultados[0]["titulo"], "Tarefa A")
+
+    def test_api_lista_comentarios_isola_por_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_editor)
+        resposta = client.get("/api/v1/equipe-comentarios/")
+        self.assertEqual(resposta.status_code, 200)
+        resultados = resposta.json()["results"]
+        self.assertEqual(len(resultados), 1)
+        self.assertEqual(resultados[0]["conteudo"], "Primeiro andamento da tarefa A.")
 
     def test_api_bloqueia_integrante_com_usuario_de_outra_campanha(self):
         client = APIClient()
@@ -176,6 +226,19 @@ class EquipePermissoesTestCase(TestCase):
         )
         self.assertEqual(resposta.status_code, 400)
 
+    def test_api_bloqueia_comentario_em_tarefa_de_outra_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_editor)
+        resposta = client.post(
+            "/api/v1/equipe-comentarios/",
+            {
+                "tarefa": str(self.tarefa_b.pk),
+                "conteudo": "Tentativa cruzada.",
+            },
+            format="json",
+        )
+        self.assertEqual(resposta.status_code, 400)
+
     def test_api_bloqueia_criacao_para_visualizador(self):
         client = APIClient()
         client.force_authenticate(self.visualizador)
@@ -185,6 +248,19 @@ class EquipePermissoesTestCase(TestCase):
                 "titulo": "Tarefa Somente Leitura",
                 "prioridade": "baixa",
                 "status": "a_fazer",
+            },
+            format="json",
+        )
+        self.assertEqual(resposta.status_code, 403)
+
+    def test_api_bloqueia_comentario_para_visualizador(self):
+        client = APIClient()
+        client.force_authenticate(self.visualizador)
+        resposta = client.post(
+            "/api/v1/equipe-comentarios/",
+            {
+                "tarefa": str(self.tarefa_a.pk),
+                "conteudo": "Tentativa somente leitura.",
             },
             format="json",
         )

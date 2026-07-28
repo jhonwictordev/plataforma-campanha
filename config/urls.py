@@ -18,14 +18,14 @@ from comunicacao.api_views import (
     WebhookComunicacaoAPIView,
 )
 from eleitores.api_views import ContatoCRMViewSet, InteracaoContatoViewSet, TarefaContatoViewSet
-from equipe.api_views import IntegranteEquipeViewSet, TarefaEquipeViewSet
+from equipe.api_views import ComentarioTarefaEquipeViewSet, IntegranteEquipeViewSet, TarefaEquipeViewSet
 from financeiro.api_views import (
     CategoriaFinanceiraViewSet,
     CentroCustoViewSet,
     LancamentoFinanceiroViewSet,
     ParceiroFinanceiroViewSet,
 )
-from liderancas.api_views import LiderancaViewSet
+from liderancas.api_views import InteracaoLiderancaViewSet, LiderancaViewSet
 from mapa_eleitoral.api_views import MapaEleitoralViewSet
 from metas.api_views import MetaCampanhaViewSet
 from usuarios.views import CancelarLoginDoisFatoresView, LoginDoisFatoresView, LoginUsuarioView
@@ -47,7 +47,9 @@ api_router.register("contato-interacoes", InteracaoContatoViewSet, basename="api
 api_router.register("contato-tarefas", TarefaContatoViewSet, basename="api-contato-tarefas")
 api_router.register("equipe-integrantes", IntegranteEquipeViewSet, basename="api-equipe-integrantes")
 api_router.register("equipe-tarefas", TarefaEquipeViewSet, basename="api-equipe-tarefas")
+api_router.register("equipe-comentarios", ComentarioTarefaEquipeViewSet, basename="api-equipe-comentarios")
 api_router.register("liderancas", LiderancaViewSet, basename="api-liderancas")
+api_router.register("lideranca-interacoes", InteracaoLiderancaViewSet, basename="api-lideranca-interacoes")
 api_router.register("mapa-eleitoral", MapaEleitoralViewSet, basename="api-mapa-eleitoral")
 api_router.register("metas-campanha", MetaCampanhaViewSet, basename="api-metas-campanha")
 

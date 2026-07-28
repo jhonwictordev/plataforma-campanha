@@ -63,3 +63,30 @@ class TarefaEquipe(ModeloCampanha):
 
     def __str__(self):
         return self.titulo
+
+
+class ComentarioTarefaEquipe(ModeloCampanha):
+    tarefa = models.ForeignKey(
+        TarefaEquipe,
+        on_delete=models.CASCADE,
+        related_name="comentarios_registrados",
+    )
+    autor = models.ForeignKey(
+        "usuarios.Usuario",
+        on_delete=models.SET_NULL,
+        related_name="comentarios_tarefas_equipe",
+        null=True,
+        blank=True,
+    )
+    conteudo = models.TextField()
+
+    class Meta:
+        verbose_name = "Comentario de tarefa"
+        verbose_name_plural = "Comentarios de tarefas"
+        indexes = [
+            models.Index(fields=["tarefa", "criado_em"]),
+            models.Index(fields=["autor", "criado_em"]),
+        ]
+
+    def __str__(self):
+        return f"Comentario em {self.tarefa} por {self.autor or 'usuario removido'}"

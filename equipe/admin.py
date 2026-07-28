@@ -1,7 +1,8 @@
 from django.contrib import admin
 
-from .models import IntegranteEquipe, TarefaEquipe
+from .models import ComentarioTarefaEquipe, IntegranteEquipe, TarefaEquipe
 
 
 admin.site.register(IntegranteEquipe)
 admin.site.register(TarefaEquipe)
+admin.site.register(ComentarioTarefaEquipe)

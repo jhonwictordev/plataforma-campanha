@@ -1,8 +1,12 @@
 from core.api import ViewSetCampanhaProtegido
 from core.permissions import PAPEIS_EQUIPE_ESCRITA, PAPEIS_EQUIPE_LEITURA
 
-from .models import IntegranteEquipe, TarefaEquipe
-from .serializers import IntegranteEquipeSerializer, TarefaEquipeSerializer
+from .models import ComentarioTarefaEquipe, IntegranteEquipe, TarefaEquipe
+from .serializers import (
+    ComentarioTarefaEquipeSerializer,
+    IntegranteEquipeSerializer,
+    TarefaEquipeSerializer,
+)
 
 
 class IntegranteEquipeViewSet(ViewSetCampanhaProtegido):
@@ -29,5 +33,19 @@ class TarefaEquipeViewSet(ViewSetCampanhaProtegido):
     niveis_permitidos_leitura = PAPEIS_EQUIPE_LEITURA
     niveis_permitidos_escrita = PAPEIS_EQUIPE_ESCRITA
     filterset_fields = ("status", "prioridade", "responsavel")
-    search_fields = ("titulo", "descricao", "comentarios")
+    search_fields = ("titulo", "descricao", "comentarios", "comentarios_registrados__conteudo")
     ordering_fields = ("status", "prazo", "criado_em", "atualizado_em")
+
+
+class ComentarioTarefaEquipeViewSet(ViewSetCampanhaProtegido):
+    queryset = ComentarioTarefaEquipe.objects.select_related(
+        "campanha",
+        "tarefa",
+        "autor",
+    ).order_by("-criado_em", "-pk")
+    serializer_class = ComentarioTarefaEquipeSerializer
+    niveis_permitidos_leitura = PAPEIS_EQUIPE_LEITURA
+    niveis_permitidos_escrita = PAPEIS_EQUIPE_ESCRITA
+    filterset_fields = ("tarefa", "autor")
+    search_fields = ("conteudo",)
+    ordering_fields = ("criado_em", "atualizado_em")
