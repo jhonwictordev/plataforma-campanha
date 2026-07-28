@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from agenda.models import EventoAgenda
 from campanhas.models import Campanha
@@ -52,6 +53,20 @@ class RelatoriosCentroTestCase(TestCase):
             nome_completo="Financeiro Relatorios",
             campanha=self.campanha_a,
             nivel_acesso="financeiro",
+        )
+        self.usuario_staff = Usuario.objects.create_user(
+            email="relatorios-staff@example.com",
+            password="senha123",
+            nome_completo="Staff Relatorios",
+            nivel_acesso="administrador",
+            is_staff=True,
+        )
+        self.usuario_outro_mobilizador = Usuario.objects.create_user(
+            email="relatorios-outro@example.com",
+            password="senha123",
+            nome_completo="Outro Mobilizador",
+            campanha=self.campanha_a,
+            nivel_acesso="mobilizador",
         )
 
         ContatoCRM.objects.create(
@@ -188,3 +203,157 @@ class RelatoriosCentroTestCase(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertEqual(resposta["Content-Type"], "application/pdf")
         self.assertIn(b"%PDF", resposta.content[:4])
+
+    def test_api_relatorio_json_isola_dados_por_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_mobilizador)
+        resposta = client.get(
+            "/api/v1/relatorios/",
+            {
+                "tipo_relatorio": "contatos_cadastrados",
+                "data_inicial": "2026-07-01",
+                "data_final": "2026-07-28",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["total_linhas"], 1)
+        self.assertEqual(dados["campanha_atual"]["id"], str(self.campanha_a.pk))
+        self.assertEqual(dados["relatorio"]["linhas"][0]["nome"], "Contato A")
+
+    def test_api_financeiro_nao_acessa_relatorio_crm(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_financeiro)
+        resposta = client.get(
+            "/api/v1/relatorios/",
+            {
+                "tipo_relatorio": "contatos_cadastrados",
+                "data_inicial": "2026-07-01",
+                "data_final": "2026-07-28",
+            },
+        )
+        self.assertEqual(resposta.status_code, 403)
+
+    def test_api_staff_pode_filtrar_relatorio_por_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_staff)
+        resposta = client.get(
+            f"/api/v1/relatorios/?tipo_relatorio=contatos_cadastrados&campanha={self.campanha_b.pk}&data_inicial=2026-07-01&data_final=2026-07-28"
+        )
+        self.assertEqual(resposta.status_code, 200)
+        dados = resposta.json()
+        self.assertEqual(dados["total_linhas"], 1)
+        self.assertEqual(dados["relatorio"]["linhas"][0]["nome"], "Contato B")
+
+    def test_api_exporta_excel_financeiro(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_financeiro)
+        resposta = client.get(
+            "/api/v1/relatorios/excel/",
+            {
+                "tipo_relatorio": "financeiro",
+                "data_inicial": "2026-07-01",
+                "data_final": "2026-07-28",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(
+            resposta["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("attachment; filename=", resposta["Content-Disposition"])
+
+    def test_api_exporta_pdf_eventos(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_mobilizador)
+        resposta = client.get(
+            "/api/v1/relatorios/pdf/",
+            {
+                "tipo_relatorio": "eventos",
+                "data_inicial": "2026-07-01",
+                "data_final": "2026-07-28",
+            },
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta["Content-Type"], "application/pdf")
+        self.assertIn(b"%PDF", resposta.content[:4])
+
+    def test_api_favoritos_isolam_por_usuario(self):
+        favorito_usuario = FiltroFavoritoRelatorio.objects.create(
+            campanha=self.campanha_a,
+            usuario=self.usuario_mobilizador,
+            nome="Favorito do usuario A",
+            tipo_relatorio="contatos_cadastrados",
+            filtros={
+                "tipo_relatorio": "contatos_cadastrados",
+                "campanha": str(self.campanha_a.pk),
+                "data_inicial": "2026-07-01",
+                "data_final": "2026-07-28",
+                "cidade": "Fortaleza",
+                "bairro": "",
+                "responsavel": "",
+            },
+        )
+        FiltroFavoritoRelatorio.objects.create(
+            campanha=self.campanha_a,
+            usuario=self.usuario_outro_mobilizador,
+            nome="Favorito de outro usuario",
+            tipo_relatorio="contatos_cadastrados",
+            filtros={
+                "tipo_relatorio": "contatos_cadastrados",
+                "campanha": str(self.campanha_a.pk),
+                "data_inicial": "2026-07-01",
+                "data_final": "2026-07-28",
+                "cidade": "",
+                "bairro": "",
+                "responsavel": "",
+            },
+        )
+        client = APIClient()
+        client.force_authenticate(self.usuario_mobilizador)
+        resposta = client.get("/api/v1/relatorios-favoritos/")
+        self.assertEqual(resposta.status_code, 200)
+        resultados = resposta.json()["results"]
+        self.assertEqual(len(resultados), 1)
+        self.assertEqual(resultados[0]["id"], str(favorito_usuario.pk))
+
+    def test_api_cria_favorito_vinculando_usuario_e_campanha(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_mobilizador)
+        resposta = client.post(
+            "/api/v1/relatorios-favoritos/",
+            {
+                "nome": "Favorito API",
+                "tipo_relatorio": "contatos_cadastrados",
+                "filtros": {
+                    "data_inicial": "2026-07-01",
+                    "data_final": "2026-07-28",
+                    "cidade": "Fortaleza",
+                    "bairro": "Centro",
+                    "responsavel": "",
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(resposta.status_code, 201)
+        favorito = FiltroFavoritoRelatorio.objects.get(nome="Favorito API")
+        self.assertEqual(favorito.usuario, self.usuario_mobilizador)
+        self.assertEqual(favorito.campanha, self.campanha_a)
+        self.assertEqual(favorito.filtros["cidade"], "Fortaleza")
+
+    def test_api_bloqueia_favorito_para_relatorio_sem_permissao(self):
+        client = APIClient()
+        client.force_authenticate(self.usuario_financeiro)
+        resposta = client.post(
+            "/api/v1/relatorios-favoritos/",
+            {
+                "nome": "Favorito invalido",
+                "tipo_relatorio": "contatos_cadastrados",
+                "filtros": {
+                    "data_inicial": "2026-07-01",
+                    "data_final": "2026-07-28",
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(resposta.status_code, 403)

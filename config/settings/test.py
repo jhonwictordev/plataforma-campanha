@@ -3,7 +3,7 @@ from pathlib import Path
 from .base import *  # noqa: F403,F401
 
 DEBUG = False
-SECRET_KEY = "teste-seguro-apenas-suite"
+SECRET_KEY = "teste-seguro-apenas-suite-comprimento-superior-a-32-bytes-2026"
 ALLOWED_HOSTS = ["testserver", "localhost"]
 CSRF_TRUSTED_ORIGINS = ["http://testserver"]
 DATABASES = {

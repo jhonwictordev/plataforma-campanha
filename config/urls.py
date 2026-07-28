@@ -6,6 +6,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from agenda.api_views import EventoAgendaViewSet
 from auditoria.api_views import (
@@ -35,6 +36,8 @@ from financeiro.api_views import (
 from liderancas.api_views import InteracaoLiderancaViewSet, LiderancaViewSet
 from mapa_eleitoral.api_views import MapaEleitoralViewSet
 from metas.api_views import MetaCampanhaViewSet
+from relatorios.api_views import FiltroFavoritoRelatorioViewSet, RelatorioViewSet
+from usuarios.api_views import AlterarSenhaAPIView, MeuPerfilAPIView, TokenJWTUsuarioView, UsuarioViewSet
 from usuarios.views import CancelarLoginDoisFatoresView, LoginDoisFatoresView, LoginUsuarioView
 
 api_router = DefaultRouter()
@@ -64,6 +67,9 @@ api_router.register("liderancas", LiderancaViewSet, basename="api-liderancas")
 api_router.register("lideranca-interacoes", InteracaoLiderancaViewSet, basename="api-lideranca-interacoes")
 api_router.register("mapa-eleitoral", MapaEleitoralViewSet, basename="api-mapa-eleitoral")
 api_router.register("metas-campanha", MetaCampanhaViewSet, basename="api-metas-campanha")
+api_router.register("relatorios", RelatorioViewSet, basename="api-relatorios")
+api_router.register("relatorios-favoritos", FiltroFavoritoRelatorioViewSet, basename="api-relatorios-favoritos")
+api_router.register("usuarios", UsuarioViewSet, basename="api-usuarios")
 
 urlpatterns = [
     path("", include("core.urls")),
@@ -102,6 +108,11 @@ urlpatterns = [
         name="redoc",
     ),
     path("api/v1/comunicacao/webhooks/<str:canal>/", WebhookComunicacaoAPIView.as_view(), name="api-comunicacao-webhook"),
+    path("api/v1/auth/token/", TokenJWTUsuarioView.as_view(), name="api-token-obter"),
+    path("api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="api-token-refresh"),
+    path("api/v1/auth/token/verify/", TokenVerifyView.as_view(), name="api-token-verify"),
+    path("api/v1/usuarios/me/", MeuPerfilAPIView.as_view(), name="api-usuarios-me"),
+    path("api/v1/usuarios/alterar-senha/", AlterarSenhaAPIView.as_view(), name="api-usuarios-alterar-senha"),
     path("api/v1/", include(api_router.urls)),
     path("", include("dashboard.urls")),
 ]
