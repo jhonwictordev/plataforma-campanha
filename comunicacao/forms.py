@@ -2,7 +2,14 @@ from django import forms
 
 from core.forms import FormularioBootstrapMixin
 
-from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
+from .models import (
+    CampanhaComunicacao,
+    CanalComunicacao,
+    EnvioComunicacao,
+    ListaBloqueio,
+    ModeloMensagem,
+    NotificacaoInterna,
+)
 from .services import analisar_destinatarios
 
 
@@ -155,6 +162,30 @@ class NotificacaoInternaFiltroFormulario(forms.Form):
         choices=[("", "Todas"), ("nao_lidas", "Nao lidas"), ("lidas", "Lidas")],
         required=False,
     )
+    busca = forms.CharField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            if isinstance(campo.widget, forms.Select):
+                campo.widget.attrs["class"] = "form-select"
+            else:
+                campo.widget.attrs["class"] = "form-control"
+            campo.widget.attrs.setdefault("placeholder", campo.label)
+
+
+class RegistroWebhookFiltroFormulario(forms.Form):
+    canal = forms.ChoiceField(choices=[("", "Todos")] + list(CanalComunicacao.choices), required=False)
+    assinatura = forms.ChoiceField(
+        choices=[("", "Todas"), ("valida", "Assinatura valida"), ("invalida", "Assinatura invalida")],
+        required=False,
+    )
+    processamento = forms.ChoiceField(
+        choices=[("", "Todos"), ("processado", "Processado"), ("pendente", "Nao processado")],
+        required=False,
+    )
+    provedor = forms.CharField(required=False)
+    evento = forms.CharField(required=False)
     busca = forms.CharField(required=False)
 
     def __init__(self, *args, **kwargs):

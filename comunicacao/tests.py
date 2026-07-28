@@ -167,11 +167,104 @@ class ComunicacaoPermissoesTestCase(TestCase):
             usuario=self.usuario_outra_campanha,
         )
 
+    def _criar_envio_email_falho(self, *, nome_campanha="Campanha Email Falha", assunto="Email falho"):
+        contato_email = ContatoCRM.objects.create(
+            campanha=self.campanha_a,
+            nome_completo=f"Contato {nome_campanha}",
+            telefone="85988880000",
+            email=f"{nome_campanha.lower().replace(' ', '-')}@example.com",
+            cidade="Fortaleza",
+            status_funil=ContatoCRM.EtapasFunil.APOIADOR,
+            consentimento_comunicacao=True,
+            canal_autorizado="email",
+        )
+        modelo_email = ModeloMensagem.objects.create(
+            campanha=self.campanha_a,
+            nome=f"Modelo {nome_campanha}",
+            canal="email",
+            assunto=assunto,
+            conteudo="Mensagem de e-mail para reprocessamento.",
+        )
+        campanha_email = CampanhaComunicacao.objects.create(
+            campanha=self.campanha_a,
+            nome=nome_campanha,
+            modelo_mensagem=modelo_email,
+            assunto=assunto,
+            conteudo="Mensagem de e-mail para reprocessamento.",
+            canal="email",
+            data_envio="2026-08-08T10:00:00Z",
+            responsavel=self.usuario_comunicacao,
+            status=CampanhaComunicacao.Status.CONCLUIDA,
+        )
+        campanha_email.destinatarios.set([contato_email])
+        sincronizar_envios_campanha(campanha_email, campanha_email.destinatarios.all(), usuario=self.usuario_comunicacao)
+        envio = campanha_email.envios.get(contato=contato_email)
+        envio.status = EnvioComunicacao.Status.FALHA
+        envio.erro_envio = "Falha simulada para reprocessamento."
+        envio.ultimo_erro_tecnico = "Falha simulada para reprocessamento."
+        envio.tentativas_envio = 1
+        envio.save(
+            update_fields=["status", "erro_envio", "ultimo_erro_tecnico", "tentativas_envio", "atualizado_em"]
+        )
+        campanha_email.quantidade_falha = 1
+        campanha_email.erro_ultima_execucao = "Falha simulada para reprocessamento."
+        campanha_email.save(update_fields=["quantidade_falha", "erro_ultima_execucao", "atualizado_em"])
+        return campanha_email, envio
+
     def test_lista_web_mostra_apenas_campanhas_da_mesma_campanha(self):
         self.client.force_login(self.usuario_comunicacao)
         resposta = self.client.get(reverse("comunicacao:home"))
         self.assertContains(resposta, "Campanha A")
         self.assertNotContains(resposta, "Campanha B")
+
+    def test_painel_operacao_web_exibe_apenas_webhooks_da_mesma_campanha(self):
+        RegistroWebhookComunicacao.objects.create(
+            campanha=self.campanha_a,
+            envio=self.envio_a,
+            canal="whatsapp",
+            provedor="whatsapp_oficial",
+            evento="delivered",
+            identificador_externo="wa-a-001",
+            dados_recebidos={"message_id": "wa-a-001"},
+            assinatura_valida=True,
+            processado_com_sucesso=True,
+        )
+        envio_b = self.campanha_comunicacao_b.envios.first()
+        RegistroWebhookComunicacao.objects.create(
+            campanha=self.campanha_b,
+            envio=envio_b,
+            canal="whatsapp",
+            provedor="whatsapp_oficial",
+            evento="failed",
+            identificador_externo="wa-b-001",
+            dados_recebidos={"message_id": "wa-b-001"},
+            assinatura_valida=False,
+            processado_com_sucesso=False,
+        )
+
+        self.client.force_login(self.usuario_comunicacao)
+        resposta = self.client.get(reverse("comunicacao:operacao"), {"assinatura": "valida"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "wa-a-001")
+        self.assertNotContains(resposta, "wa-b-001")
+
+    def test_detalhe_webhook_bloqueia_idor_para_outra_campanha(self):
+        envio_b = self.campanha_comunicacao_b.envios.first()
+        webhook_b = RegistroWebhookComunicacao.objects.create(
+            campanha=self.campanha_b,
+            envio=envio_b,
+            canal="whatsapp",
+            provedor="whatsapp_oficial",
+            evento="failed",
+            identificador_externo="wa-b-idor",
+            dados_recebidos={"message_id": "wa-b-idor"},
+            assinatura_valida=True,
+            processado_com_sucesso=False,
+        )
+
+        self.client.force_login(self.usuario_comunicacao)
+        resposta = self.client.get(reverse("comunicacao:webhook_detalhe", args=[webhook_b.pk]))
+        self.assertEqual(resposta.status_code, 404)
 
     def test_detalhe_web_bloqueia_idor_para_outra_campanha(self):
         self.client.force_login(self.usuario_comunicacao)
@@ -290,6 +383,35 @@ class ComunicacaoPermissoesTestCase(TestCase):
                 canal="whatsapp",
             ).exists()
         )
+
+    def test_reprocessamento_web_de_envio_falho(self):
+        campanha_email, envio = self._criar_envio_email_falho(nome_campanha="Campanha Email Reprocessar")
+        mail.outbox.clear()
+
+        self.client.force_login(self.usuario_comunicacao)
+        resposta = self.client.post(
+            reverse("comunicacao:envio_reprocessar", args=[envio.pk]),
+            {"next": reverse("comunicacao:operacao")},
+        )
+        self.assertEqual(resposta.status_code, 302)
+        envio.refresh_from_db()
+        campanha_email.refresh_from_db()
+        self.assertEqual(envio.status, EnvioComunicacao.Status.ENVIADO)
+        self.assertEqual(campanha_email.status, CampanhaComunicacao.Status.CONCLUIDA)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_api_reprocessa_envio_falho(self):
+        _, envio = self._criar_envio_email_falho(nome_campanha="Campanha Email API Reprocessar")
+        mail.outbox.clear()
+
+        client = APIClient()
+        client.force_authenticate(self.usuario_comunicacao)
+        resposta = client.post(f"/api/v1/comunicacao-envios/{envio.pk}/reprocessar/", {}, format="json")
+        self.assertEqual(resposta.status_code, 200)
+        envio.refresh_from_db()
+        self.assertEqual(envio.status, EnvioComunicacao.Status.ENVIADO)
+        self.assertEqual(resposta.json()["processamento"]["resultado"], "sucesso")
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_usuario_visualiza_apenas_suas_notificacoes(self):
         NotificacaoInterna.objects.create(

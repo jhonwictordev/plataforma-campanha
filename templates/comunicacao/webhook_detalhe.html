@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Inspecao tecnica</p>
+        <h2 class="h3 mb-1">Webhook de {{ registro_webhook.get_canal_display }}</h2>
+        <p class="text-secondary mb-0">{{ registro_webhook.evento|default:"sem_evento" }} • {{ registro_webhook.recebido_em|date:"d/m/Y H:i" }}</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if registro_webhook.envio %}
+            <a class="btn btn-outline-primary" href="{% url 'comunicacao:campanha_detalhe' registro_webhook.envio.campanha_comunicacao.pk %}">Abrir campanha</a>
+        {% endif %}
+        <a class="btn btn-outline-secondary" href="{% url 'comunicacao:operacao' %}">Voltar</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Resumo</h3>
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-5">Canal</dt>
+                    <dd class="col-sm-7">{{ registro_webhook.get_canal_display }}</dd>
+                    <dt class="col-sm-5">Provedor</dt>
+                    <dd class="col-sm-7">{{ registro_webhook.provedor|default:"-" }}</dd>
+                    <dt class="col-sm-5">Evento</dt>
+                    <dd class="col-sm-7">{{ registro_webhook.evento|default:"-" }}</dd>
+                    <dt class="col-sm-5">Assinatura</dt>
+                    <dd class="col-sm-7">
+                        {% if registro_webhook.assinatura_valida %}
+                            <span class="badge text-bg-success">Valida</span>
+                        {% else %}
+                            <span class="badge text-bg-danger">Invalida</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-5">Processamento</dt>
+                    <dd class="col-sm-7">
+                        {% if registro_webhook.processado_com_sucesso %}
+                            <span class="badge text-bg-primary">Processado</span>
+                        {% else %}
+                            <span class="badge text-bg-warning">Pendente</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-5">ID externo</dt>
+                    <dd class="col-sm-7">{{ registro_webhook.identificador_externo|default:"-" }}</dd>
+                    <dt class="col-sm-5">Mensagem</dt>
+                    <dd class="col-sm-7">{{ registro_webhook.mensagem_processamento|default:"-" }}</dd>
+                    <dt class="col-sm-5">IP</dt>
+                    <dd class="col-sm-7">{{ registro_webhook.endereco_ip|default:"-" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Payload mascarado</h3>
+                <p class="text-secondary small">Este registro preserva trilha técnica sem expor o conteúdo integral da mensagem ou destinos completos.</p>
+                <pre class="bg-body-tertiary border rounded-4 p-3 small mb-0" style="max-height: 480px; overflow: auto;"><code>{{ dados_recebidos_formatados }}</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if registro_webhook.envio %}
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h3 class="h5 mb-3">Envio relacionado</h3>
+            <div class="row g-3 small">
+                <div class="col-md-4">
+                    <div class="text-secondary">Contato</div>
+                    <div class="fw-semibold">{{ registro_webhook.envio.contato.nome_completo }}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-secondary">Campanha</div>
+                    <div class="fw-semibold">{{ registro_webhook.envio.campanha_comunicacao.nome }}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-secondary">Status atual</div>
+                    <div class="fw-semibold">{{ registro_webhook.envio.get_status_display }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

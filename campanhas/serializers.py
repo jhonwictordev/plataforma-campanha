@@ -58,13 +58,13 @@ class CampanhaSerializer(serializers.ModelSerializer):
             "objetivos_gerais": {"required": False, "allow_blank": True},
         }
 
-    def get_total_usuarios_vinculados(self, obj):
+    def get_total_usuarios_vinculados(self, obj) -> int:
         return obj.usuarios_vinculados.filter(is_active=True).count()
 
-    def get_total_contatos(self, obj):
+    def get_total_contatos(self, obj) -> int:
         return obj.contatocrms.count()
 
-    def get_total_liderancas(self, obj):
+    def get_total_liderancas(self, obj) -> int:
         return obj.liderancas.count()
 
     def validate_cor_primaria(self, valor):

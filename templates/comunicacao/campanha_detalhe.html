@@ -7,6 +7,10 @@
         <p class="text-secondary mb-0">{{ campanha_comunicacao.assunto|default:"Sem assunto" }}</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-dark" href="{% url 'comunicacao:operacao' %}">
+            <i class="bi bi-broadcast-pin"></i>
+            Operacao
+        </a>
         {% if pode_editar %}
             <a class="btn btn-primary" href="{% url 'comunicacao:campanha_editar' campanha_comunicacao.pk %}">Editar campanha</a>
         {% endif %}
@@ -134,6 +138,13 @@
                         </td>
                         <td class="text-end">
                             {% if pode_editar %}
+                                {% if envio.status == "falha" or envio.status == "programado" %}
+                                    <form method="post" action="{% url 'comunicacao:envio_reprocessar' envio.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.path }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Reprocessar</button>
+                                    </form>
+                                {% endif %}
                                 <a class="btn btn-sm btn-outline-secondary" href="{% url 'comunicacao:envio_editar' envio.pk %}">Atualizar</a>
                             {% endif %}
                         </td>

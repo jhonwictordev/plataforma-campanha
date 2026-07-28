@@ -20,12 +20,108 @@ from .models import (
 )
 from .providers import ErroProvedorComunicacao, ResultadoProvedor, obter_provedor_para_canal
 
+EMAIL_BACKENDS_LOCAIS = {
+    "django.core.mail.backends.console.EmailBackend",
+    "django.core.mail.backends.locmem.EmailBackend",
+    "django.core.mail.backends.filebased.EmailBackend",
+}
+
 
 def contar_contatos_autorizados(campanha_id, canal=None) -> int:
     queryset = ContatoCRM.objects.filter(campanha_id=campanha_id, consentimento_comunicacao=True)
     if canal:
         queryset = queryset.filter(canal_autorizado__iexact=canal)
     return queryset.count()
+
+
+def obter_status_integracoes_oficiais() -> list[dict[str, object]]:
+    email_backend = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend").strip()
+    default_from_email = os.getenv("DEFAULT_FROM_EMAIL", "nao-responda@plataformacampanha.local").strip()
+    email_webhook = os.getenv("EMAIL_OFFICIAL_WEBHOOK_TOKEN", "").strip()
+
+    status = [
+        {
+            "canal": CanalComunicacao.EMAIL,
+            "titulo": "E-mail",
+            "provedor": "email_django",
+            "envio_configurado": email_backend not in EMAIL_BACKENDS_LOCAIS and bool(default_from_email),
+            "webhook_configurado": bool(email_webhook),
+            "detalhe_envio": (
+                "Backend externo pronto para mensagens transacionais."
+                if email_backend not in EMAIL_BACKENDS_LOCAIS and default_from_email
+                else "Backend ainda esta em modo local ou de demonstracao."
+            ),
+            "detalhe_webhook": (
+                "Concilia entregas e respostas por webhook."
+                if email_webhook
+                else "Webhook de email ainda nao configurado."
+            ),
+        }
+    ]
+
+    for canal, titulo, url_env, token_env, webhook_env, provedor in (
+        (
+            CanalComunicacao.WHATSAPP,
+            "WhatsApp oficial",
+            "WHATSAPP_OFFICIAL_API_URL",
+            "WHATSAPP_OFFICIAL_API_TOKEN",
+            "WHATSAPP_OFFICIAL_WEBHOOK_TOKEN",
+            "whatsapp_oficial",
+        ),
+        (
+            CanalComunicacao.SMS,
+            "SMS oficial",
+            "SMS_OFFICIAL_API_URL",
+            "SMS_OFFICIAL_API_TOKEN",
+            "SMS_OFFICIAL_WEBHOOK_TOKEN",
+            "sms_oficial",
+        ),
+    ):
+        endpoint = os.getenv(url_env, "").strip()
+        token = os.getenv(token_env, "").strip()
+        webhook = os.getenv(webhook_env, "").strip()
+        status.append(
+            {
+                "canal": canal,
+                "titulo": titulo,
+                "provedor": provedor,
+                "envio_configurado": bool(endpoint and token and endpoint.startswith("https://")),
+                "webhook_configurado": bool(webhook),
+                "detalhe_envio": (
+                    "Endpoint HTTPS e token oficial configurados."
+                    if endpoint and token and endpoint.startswith("https://")
+                    else "Canal ainda nao esta apto para disparo oficial neste ambiente."
+                ),
+                "detalhe_webhook": (
+                    "Webhook de reconciliacao configurado."
+                    if webhook
+                    else "Webhook oficial ainda nao configurado."
+                ),
+            }
+        )
+
+    status.append(
+        {
+            "canal": CanalComunicacao.NOTIFICACAO_INTERNA,
+            "titulo": "Notificacao interna",
+            "provedor": "notificacao_interna",
+            "envio_configurado": True,
+            "webhook_configurado": False,
+            "detalhe_envio": "Canal interno sempre disponivel para operadores autorizados.",
+            "detalhe_webhook": "Nao depende de webhook externo.",
+        }
+    )
+    return status
+
+
+def resumir_registros_webhook(queryset) -> dict[str, int]:
+    queryset = queryset.order_by()
+    return {
+        "total": queryset.count(),
+        "invalidos": queryset.filter(assinatura_valida=False).count(),
+        "nao_processados": queryset.filter(processado_com_sucesso=False).count(),
+        "falhas_tecnicas": queryset.filter(assinatura_valida=True, processado_com_sucesso=False).count(),
+    }
 
 
 def analisar_destinatarios(campanha_id, canal, destinatarios):
@@ -606,6 +702,51 @@ def processar_envio_comunicacao(envio, provedor=None, forcar_reenvio: bool = Fal
 
     _aplicar_resultado_envio(envio, resultado)
     return {"resultado": "sucesso", "motivo": resultado.mensagem or "Envio processado."}
+
+
+def reprocessar_envio_individual(envio) -> dict[str, str | int]:
+    campanha = envio.campanha_comunicacao
+    referencia = timezone.now()
+    campanha.ultima_execucao_em = referencia
+    campanha.processamento_iniciado_em = referencia
+    campanha.processamento_finalizado_em = referencia
+    campanha.save(
+        update_fields=[
+            "ultima_execucao_em",
+            "processamento_iniciado_em",
+            "processamento_finalizado_em",
+            "atualizado_em",
+        ]
+    )
+
+    resumo = processar_envio_comunicacao(envio, forcar_reenvio=True)
+    campanha.atualizar_metricas()
+    falhas_restantes = campanha.envios.filter(status=EnvioComunicacao.Status.FALHA).count()
+    programados_restantes = campanha.envios.filter(status=EnvioComunicacao.Status.PROGRAMADO).count()
+
+    if campanha.status != CampanhaComunicacao.Status.CANCELADA:
+        if programados_restantes > 0:
+            campanha.status = CampanhaComunicacao.Status.AGENDADA
+        elif falhas_restantes > 0:
+            campanha.status = CampanhaComunicacao.Status.CONCLUIDA
+        else:
+            campanha.status = CampanhaComunicacao.Status.CONCLUIDA
+        campanha.erro_ultima_execucao = (
+            f"{falhas_restantes} envio(s) ainda apresentam falha apos o reprocessamento."
+            if falhas_restantes
+            else ""
+        )
+        campanha.save(update_fields=["status", "erro_ultima_execucao", "atualizado_em"])
+
+    envio.refresh_from_db()
+    return {
+        "resultado": resumo["resultado"],
+        "motivo": resumo["motivo"],
+        "status_envio": envio.status,
+        "status_campanha": campanha.status,
+        "falhas_restantes": falhas_restantes,
+        "programados_restantes": programados_restantes,
+    }
 
 
 @transaction.atomic

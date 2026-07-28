@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="eyebrow mb-1">Operacao e integracoes</p>
+        <h2 class="h3 mb-1">{{ titulo }}</h2>
+        <p class="text-secondary mb-0">{{ descricao }}</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-secondary" href="{% url 'comunicacao:home' %}">Voltar</a>
+        {% if pode_editar %}
+            <a class="btn btn-primary" href="{% url 'comunicacao:campanha_nova' %}">
+                <i class="bi bi-send"></i>
+                Nova campanha
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="small text-uppercase text-secondary mb-2">Campanhas pausadas</p>
+                <h3 class="h2 mb-1">{{ resumo_operacao.campanhas_pausadas }}</h3>
+                <p class="text-secondary mb-0">Aguardando correção operacional ou nova execução.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="small text-uppercase text-secondary mb-2">Campanhas com falha</p>
+                <h3 class="h2 mb-1">{{ resumo_operacao.campanhas_com_falha }}</h3>
+                <p class="text-secondary mb-0">Com pelo menos um destinatário ainda em falha.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="small text-uppercase text-secondary mb-2">Envios em falha</p>
+                <h3 class="h2 mb-1">{{ resumo_operacao.envios_falha }}</h3>
+                <p class="text-secondary mb-0">Prontos para revisão ou reprocessamento seguro.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <p class="small text-uppercase text-secondary mb-2">Webhooks recentes</p>
+                <h3 class="h2 mb-1">{{ resumo_operacao.webhooks_total }}</h3>
+                <p class="text-secondary mb-0">
+                    {{ resumo_webhooks.invalidos }} inválidos, {{ resumo_webhooks.nao_processados }} pendentes.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent border-0 pt-4 px-4">
+        <h3 class="h5 mb-1">Status das integrações</h3>
+        <p class="text-secondary mb-0">Use apenas canais oficiais configurados com credenciais válidas.</p>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            {% for integracao in integracoes %}
+                <div class="col-md-6 col-xl-3">
+                    <div class="border rounded-4 p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                            <div>
+                                <strong>{{ integracao.titulo }}</strong>
+                                <div class="small text-secondary">{{ integracao.provedor }}</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge {% if integracao.envio_configurado %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                                    {% if integracao.envio_configurado %}Envio OK{% else %}Pendente{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="small text-secondary mb-2">{{ integracao.detalhe_envio }}</div>
+                        <div class="small">
+                            <span class="fw-semibold">Webhook:</span>
+                            {% if integracao.webhook_configurado %}
+                                <span class="text-success">configurado</span>
+                            {% else %}
+                                <span class="text-secondary">não configurado</span>
+                            {% endif %}
+                        </div>
+                        <div class="small text-secondary mt-1">{{ integracao.detalhe_webhook }}</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h3 class="h5 mb-1">Campanhas pausadas</h3>
+                <p class="text-secondary mb-0">Normalmente indicam falta de integração oficial ou bloqueio operacional.</p>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for campanha in campanhas_pausadas %}
+                    <div class="list-group-item py-3">
+                        <div class="d-flex justify-content-between gap-3">
+                            <div>
+                                <strong>{{ campanha.nome }}</strong>
+                                <div class="small text-secondary">{{ campanha.get_canal_display }} • {{ campanha.campanha.nome_campanha }}</div>
+                            </div>
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'comunicacao:campanha_detalhe' campanha.pk %}">Abrir</a>
+                        </div>
+                        {% if campanha.erro_ultima_execucao %}
+                            <div class="small text-danger mt-2">{{ campanha.erro_ultima_execucao }}</div>
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    <div class="list-group-item py-4 text-secondary">Nenhuma campanha pausada neste recorte.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h3 class="h5 mb-1">Envios com falha</h3>
+                <p class="text-secondary mb-0">Reprocesse apenas depois de validar consentimento, destino e integração.</p>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for envio in envios_falha %}
+                    <div class="list-group-item py-3">
+                        <div class="d-flex justify-content-between gap-3">
+                            <div>
+                                <strong>{{ envio.contato.nome_completo }}</strong>
+                                <div class="small text-secondary">{{ envio.campanha_comunicacao.nome }} • {{ envio.get_canal_display }}</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                {% if pode_editar %}
+                                    <form method="post" action="{% url 'comunicacao:envio_reprocessar' envio.pk %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.path }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Reprocessar</button>
+                                    </form>
+                                {% endif %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'comunicacao:campanha_detalhe' envio.campanha_comunicacao.pk %}">Campanha</a>
+                            </div>
+                        </div>
+                        <div class="small text-danger mt-2">{{ envio.ultimo_erro_tecnico|default:envio.erro_envio }}</div>
+                    </div>
+                {% empty %}
+                    <div class="list-group-item py-4 text-secondary">Nenhum envio com falha no momento.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Canal</label>
+                        {{ filtro_form.canal }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Assinatura</label>
+                        {{ filtro_form.assinatura }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Processamento</label>
+                        {{ filtro_form.processamento }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Provedor</label>
+                        {{ filtro_form.provedor }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Evento</label>
+                        {{ filtro_form.evento }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Busca</label>
+                        {{ filtro_form.busca }}
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-outline-primary">Filtrar webhooks</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'comunicacao:operacao' %}">Limpar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h3 class="h5 mb-1">Registros de webhook</h3>
+                <p class="text-secondary mb-0">Os payloads exibidos já estão mascarados para reduzir exposição de dados pessoais.</p>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Recebido</th>
+                            <th>Canal</th>
+                            <th>Evento</th>
+                            <th>Processamento</th>
+                            <th>Destino</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registro in registros_webhook %}
+                            <tr>
+                                <td class="small text-secondary">{{ registro.recebido_em|date:"d/m/Y H:i" }}</td>
+                                <td>{{ registro.get_canal_display }}</td>
+                                <td>
+                                    <strong>{{ registro.evento|default:"sem_evento" }}</strong>
+                                    <div class="small text-secondary">{{ registro.provedor|default:"-" }}</div>
+                                </td>
+                                <td class="small">
+                                    <div>
+                                        <span class="badge {% if registro.assinatura_valida %}text-bg-success{% else %}text-bg-danger{% endif %}">
+                                            {% if registro.assinatura_valida %}Assinatura válida{% else %}Assinatura inválida{% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="mt-1">
+                                        <span class="badge {% if registro.processado_com_sucesso %}text-bg-primary{% else %}text-bg-warning{% endif %}">
+                                            {% if registro.processado_com_sucesso %}Processado{% else %}Pendente{% endif %}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="small text-secondary">
+                                    {% if registro.envio %}
+                                        <div>{{ registro.envio.contato.nome_completo }}</div>
+                                        <div>{{ registro.identificador_externo|default:"-" }}</div>
+                                    {% else %}
+                                        <div>Sem envio vinculado</div>
+                                        <div>{{ registro.identificador_externo|default:"-" }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'comunicacao:webhook_detalhe' registro.pk %}">Inspecionar</a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-secondary">Nenhum webhook encontrado para os filtros atuais.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -5,8 +5,10 @@ from .views import (
     CampanhaComunicacaoDetailView,
     CampanhaComunicacaoExecutarAgoraView,
     CampanhaComunicacaoUpdateView,
+    ComunicacaoOperacaoView,
     ComunicacaoHomeView,
     EnvioComunicacaoUpdateView,
+    EnvioComunicacaoReprocessarView,
     ListaBloqueioCreateView,
     ListaBloqueioUpdateView,
     ModeloMensagemCreateView,
@@ -14,12 +16,14 @@ from .views import (
     NotificacaoInternaListView,
     NotificacaoInternaMarcarLidaView,
     NotificacaoInternaMarcarTodasLidasView,
+    RegistroWebhookComunicacaoDetailView,
 )
 
 app_name = "comunicacao"
 
 urlpatterns = [
     path("", ComunicacaoHomeView.as_view(), name="home"),
+    path("operacao/", ComunicacaoOperacaoView.as_view(), name="operacao"),
     path("notificacoes/", NotificacaoInternaListView.as_view(), name="notificacoes"),
     path("notificacoes/marcar-todas/", NotificacaoInternaMarcarTodasLidasView.as_view(), name="notificacoes_marcar_todas"),
     path("notificacoes/<uuid:pk>/marcar-lida/", NotificacaoInternaMarcarLidaView.as_view(), name="notificacao_marcar_lida"),
@@ -32,4 +36,6 @@ urlpatterns = [
     path("bloqueios/novo/", ListaBloqueioCreateView.as_view(), name="bloqueio_novo"),
     path("bloqueios/<uuid:pk>/editar/", ListaBloqueioUpdateView.as_view(), name="bloqueio_editar"),
     path("envios/<uuid:pk>/editar/", EnvioComunicacaoUpdateView.as_view(), name="envio_editar"),
+    path("envios/<uuid:pk>/reprocessar/", EnvioComunicacaoReprocessarView.as_view(), name="envio_reprocessar"),
+    path("webhooks/<uuid:pk>/", RegistroWebhookComunicacaoDetailView.as_view(), name="webhook_detalhe"),
 ]

@@ -1,3 +1,5 @@
+import json
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -23,14 +25,26 @@ from .forms import (
     ListaBloqueioFormulario,
     ModeloMensagemFormulario,
     NotificacaoInternaFiltroFormulario,
+    RegistroWebhookFiltroFormulario,
 )
-from .models import CampanhaComunicacao, CanalComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
+from .models import (
+    CampanhaComunicacao,
+    CanalComunicacao,
+    EnvioComunicacao,
+    ListaBloqueio,
+    ModeloMensagem,
+    NotificacaoInterna,
+    RegistroWebhookComunicacao,
+)
 from .services import (
     contar_contatos_autorizados,
     listar_notificacoes_usuario,
     marcar_todas_notificacoes_como_lidas,
+    obter_status_integracoes_oficiais,
     processar_campanha_comunicacao,
+    reprocessar_envio_individual,
     registrar_descadastro,
+    resumir_registros_webhook,
     sincronizar_envios_campanha,
 )
 
@@ -144,6 +158,16 @@ class EnvioComunicacaoQuerysetMixin:
     def get_queryset(self):
         queryset = super().get_queryset().select_related("campanha_comunicacao", "contato", "responsavel_registro")
         return filtrar_queryset_por_usuario(queryset, self.request.user)
+
+
+class RegistroWebhookQuerysetMixin:
+    def get_queryset(self):
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related("campanha", "envio", "envio__contato", "envio__campanha_comunicacao")
+        )
+        return filtrar_queryset_por_usuario(queryset, self.request.user, campo_campanha="campanha_id")
 
 
 class ModeloMensagemCreateView(LoginRequiredMixin, NivelAcessoMixin, MensagemSucessoMixin, CreateView):
@@ -356,6 +380,166 @@ class EnvioComunicacaoUpdateView(
         registrar_descadastro(self.object, usuario=self.request.user)
         self.object.campanha_comunicacao.atualizar_metricas()
         return response
+
+
+class EnvioComunicacaoReprocessarView(
+    LoginRequiredMixin,
+    NivelAcessoMixin,
+    FiltroCampanhaMixin,
+    EnvioComunicacaoQuerysetMixin,
+    View,
+):
+    model = EnvioComunicacao
+    niveis_permitidos = PAPEIS_COMUNICACAO_ESCRITA
+
+    def get_queryset(self):
+        queryset = EnvioComunicacao.objects.select_related(
+            "campanha_comunicacao",
+            "contato",
+            "responsavel_registro",
+            "campanha_comunicacao__campanha",
+        )
+        return filtrar_queryset_por_usuario(queryset, self.request.user)
+
+    def post(self, request, pk):
+        envio = get_object_or_404(self.get_queryset(), pk=pk)
+        if envio.status not in {EnvioComunicacao.Status.FALHA, EnvioComunicacao.Status.PROGRAMADO}:
+            messages.warning(
+                request,
+                "Este envio nao esta em um estado seguro para reprocessamento manual.",
+            )
+        else:
+            resumo = reprocessar_envio_individual(envio)
+            if resumo["resultado"] == "sucesso":
+                messages.success(
+                    request,
+                    (
+                        f"Envio reprocessado com sucesso. Restam {resumo['falhas_restantes']} falha(s) "
+                        f"e {resumo['programados_restantes']} envio(s) programado(s) nesta campanha."
+                    ),
+                )
+            else:
+                messages.error(request, resumo["motivo"])
+        proximo = request.POST.get("next", "").strip()
+        if proximo:
+            return redirect(proximo)
+        return redirect("comunicacao:campanha_detalhe", pk=envio.campanha_comunicacao_id)
+
+
+class ComunicacaoOperacaoView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
+    template_name = "comunicacao/operacao.html"
+    niveis_permitidos = PAPEIS_COMUNICACAO_LEITURA
+
+    def _campanhas_queryset(self):
+        queryset = CampanhaComunicacao.objects.select_related("responsavel", "campanha")
+        queryset = filtrar_queryset_por_usuario(queryset, self.request.user)
+        return queryset.order_by("data_envio", "-atualizado_em", "pk")
+
+    def _envios_falha_queryset(self):
+        queryset = EnvioComunicacao.objects.select_related(
+            "campanha_comunicacao",
+            "contato",
+            "responsavel_registro",
+        )
+        queryset = filtrar_queryset_por_usuario(queryset, self.request.user)
+        return queryset.filter(status=EnvioComunicacao.Status.FALHA).order_by("-atualizado_em", "pk")
+
+    def _webhooks_queryset(self):
+        queryset = RegistroWebhookComunicacao.objects.select_related(
+            "campanha",
+            "envio",
+            "envio__contato",
+            "envio__campanha_comunicacao",
+        )
+        queryset = filtrar_queryset_por_usuario(queryset, self.request.user, campo_campanha="campanha_id")
+        return queryset.order_by("-recebido_em", "-pk")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        formulario = RegistroWebhookFiltroFormulario(self.request.GET or None)
+        campanhas = self._campanhas_queryset()
+        envios_falha = self._envios_falha_queryset()
+        webhooks = self._webhooks_queryset()
+
+        if formulario.is_valid():
+            canal = formulario.cleaned_data.get("canal")
+            assinatura = formulario.cleaned_data.get("assinatura")
+            processamento = formulario.cleaned_data.get("processamento")
+            provedor = (formulario.cleaned_data.get("provedor") or "").strip()
+            evento = (formulario.cleaned_data.get("evento") or "").strip()
+            busca = (formulario.cleaned_data.get("busca") or "").strip()
+
+            if canal:
+                webhooks = webhooks.filter(canal=canal)
+            if assinatura == "valida":
+                webhooks = webhooks.filter(assinatura_valida=True)
+            elif assinatura == "invalida":
+                webhooks = webhooks.filter(assinatura_valida=False)
+            if processamento == "processado":
+                webhooks = webhooks.filter(processado_com_sucesso=True)
+            elif processamento == "pendente":
+                webhooks = webhooks.filter(processado_com_sucesso=False)
+            if provedor:
+                webhooks = webhooks.filter(provedor__icontains=provedor)
+            if evento:
+                webhooks = webhooks.filter(evento__icontains=evento)
+            if busca:
+                webhooks = webhooks.filter(
+                    Q(identificador_externo__icontains=busca)
+                    | Q(mensagem_processamento__icontains=busca)
+                    | Q(envio__contato__nome_completo__icontains=busca)
+                    | Q(envio__campanha_comunicacao__nome__icontains=busca)
+                )
+
+        context["titulo"] = "Operacao de integracoes"
+        context["descricao"] = "Acompanhe integrações oficiais, webhooks, campanhas pausadas e reprocessamentos seguros."
+        context["pode_editar"] = usuario_tem_nivel(self.request.user, PAPEIS_COMUNICACAO_ESCRITA)
+        context["filtro_form"] = formulario
+        context["integracoes"] = obter_status_integracoes_oficiais()
+        context["campanhas_pausadas"] = campanhas.filter(status=CampanhaComunicacao.Status.PAUSADA)[:8]
+        context["campanhas_com_falha"] = campanhas.filter(quantidade_falha__gt=0)[:8]
+        context["envios_falha"] = envios_falha[:12]
+        context["registros_webhook"] = webhooks[:20]
+        context["resumo_webhooks"] = resumir_registros_webhook(webhooks)
+        context["resumo_operacao"] = {
+            "campanhas_pausadas": campanhas.filter(status=CampanhaComunicacao.Status.PAUSADA).count(),
+            "campanhas_com_falha": campanhas.filter(quantidade_falha__gt=0).count(),
+            "envios_falha": envios_falha.count(),
+            "webhooks_total": webhooks.count(),
+        }
+        return context
+
+
+class RegistroWebhookComunicacaoDetailView(
+    LoginRequiredMixin,
+    NivelAcessoMixin,
+    RegistroWebhookQuerysetMixin,
+    DetailView,
+):
+    model = RegistroWebhookComunicacao
+    template_name = "comunicacao/webhook_detalhe.html"
+    context_object_name = "registro_webhook"
+    niveis_permitidos = PAPEIS_COMUNICACAO_LEITURA
+
+    def get_queryset(self):
+        queryset = RegistroWebhookComunicacao.objects.select_related(
+            "campanha",
+            "envio",
+            "envio__contato",
+            "envio__campanha_comunicacao",
+        )
+        return filtrar_queryset_por_usuario(queryset, self.request.user, campo_campanha="campanha_id")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["pode_editar"] = usuario_tem_nivel(self.request.user, PAPEIS_COMUNICACAO_ESCRITA)
+        context["dados_recebidos_formatados"] = json.dumps(
+            self.object.dados_recebidos,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        return context
 
 
 class NotificacaoInternaListView(LoginRequiredMixin, TemplateView):

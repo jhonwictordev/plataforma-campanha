@@ -32,6 +32,7 @@ from .serializers import (
     NotificacaoInternaSerializer,
 )
 from .services import processar_campanha_comunicacao, receber_webhook_comunicacao
+from .services import reprocessar_envio_individual
 
 
 class ModeloMensagemViewSet(ViewSetCampanhaProtegido):
@@ -89,6 +90,15 @@ class EnvioComunicacaoViewSet(ViewSetCampanhaProtegido):
     filterset_fields = ("canal", "status", "campanha_comunicacao", "contato", "cancelou_inscricao")
     search_fields = ("contato__nome_completo", "erro_envio", "resposta_recebida", "mensagem_enviada")
     ordering_fields = ("data_programada", "data_envio", "data_entrega", "data_resposta", "criado_em", "atualizado_em")
+
+    @action(detail=True, methods=["post"], url_path="reprocessar")
+    def reprocessar(self, request, pk=None):
+        if not usuario_tem_nivel(request.user, PAPEIS_COMUNICACAO_ESCRITA):
+            raise PermissionDenied("Voce nao possui permissao para reprocessar envios.")
+        envio = self.get_object()
+        resumo = reprocessar_envio_individual(envio)
+        serializer = self.get_serializer(envio)
+        return Response({"envio": serializer.data, "processamento": resumo})
 
 
 class NotificacaoInternaViewSet(ViewSetCampanhaProtegido):
