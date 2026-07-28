@@ -6,7 +6,7 @@ from rest_framework.test import APIClient
 from campanhas.models import Campanha
 from eleitores.models import ContatoCRM
 
-from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem
+from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
 from .services import sincronizar_envios_campanha
 
 Usuario = get_user_model()
@@ -280,3 +280,38 @@ class ComunicacaoPermissoesTestCase(TestCase):
                 canal="whatsapp",
             ).exists()
         )
+
+    def test_usuario_visualiza_apenas_suas_notificacoes(self):
+        NotificacaoInterna.objects.create(
+            campanha=self.campanha_a,
+            usuario_destinatario=self.usuario_comunicacao,
+            titulo="Alerta A",
+            mensagem="Mensagem A",
+            categoria=NotificacaoInterna.Categorias.SISTEMA,
+        )
+        NotificacaoInterna.objects.create(
+            campanha=self.campanha_b,
+            usuario_destinatario=self.usuario_outra_campanha,
+            titulo="Alerta B",
+            mensagem="Mensagem B",
+            categoria=NotificacaoInterna.Categorias.SISTEMA,
+        )
+        self.client.force_login(self.usuario_comunicacao)
+        resposta = self.client.get(reverse("comunicacao:notificacoes"))
+        self.assertContains(resposta, "Alerta A")
+        self.assertNotContains(resposta, "Alerta B")
+
+    def test_api_marca_notificacao_como_lida(self):
+        notificacao = NotificacaoInterna.objects.create(
+            campanha=self.campanha_a,
+            usuario_destinatario=self.usuario_comunicacao,
+            titulo="Alerta de leitura",
+            mensagem="Mensagem",
+            categoria=NotificacaoInterna.Categorias.SISTEMA,
+        )
+        client = APIClient()
+        client.force_authenticate(self.usuario_comunicacao)
+        resposta = client.patch(f"/api/v1/comunicacao-notificacoes/{notificacao.pk}/", {}, format="json")
+        self.assertEqual(resposta.status_code, 200)
+        notificacao.refresh_from_db()
+        self.assertIsNotNone(notificacao.lida_em)

@@ -123,6 +123,12 @@ Gerar backup SQL com PostgreSQL:
 python manage.py backup_banco --formato sql
 ```
 
+Sincronizar as rotinas periodicas do `django-celery-beat`:
+
+```bash
+python manage.py sincronizar_rotinas_celery
+```
+
 Todos os dados gerados por `popular_dados_demo` sao sinteticos e usam o dominio ficticio `@demo.plataformacampanha.local`. A senha padrao dos usuarios demo e `Demo2026!`.
 
 ## Testes e validacao
@@ -156,6 +162,7 @@ python manage.py collectstatic --noinput
 gunicorn config.wsgi:application --bind 127.0.0.1:8000
 celery -A config worker -l info
 celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+python manage.py sincronizar_rotinas_celery
 ```
 
 ## Observacoes finais

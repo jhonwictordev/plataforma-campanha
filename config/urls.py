@@ -12,6 +12,7 @@ from comunicacao.api_views import (
     EnvioComunicacaoViewSet,
     ListaBloqueioViewSet,
     ModeloMensagemViewSet,
+    NotificacaoInternaViewSet,
 )
 from eleitores.api_views import ContatoCRMViewSet
 from equipe.api_views import IntegranteEquipeViewSet, TarefaEquipeViewSet
@@ -31,6 +32,7 @@ api_router.register("comunicacao-modelos", ModeloMensagemViewSet, basename="api-
 api_router.register("comunicacao-campanhas", CampanhaComunicacaoViewSet, basename="api-comunicacao-campanhas")
 api_router.register("comunicacao-bloqueios", ListaBloqueioViewSet, basename="api-comunicacao-bloqueios")
 api_router.register("comunicacao-envios", EnvioComunicacaoViewSet, basename="api-comunicacao-envios")
+api_router.register("comunicacao-notificacoes", NotificacaoInternaViewSet, basename="api-comunicacao-notificacoes")
 api_router.register("financeiro-categorias", CategoriaFinanceiraViewSet, basename="api-financeiro-categorias")
 api_router.register("financeiro-centros-custo", CentroCustoViewSet, basename="api-financeiro-centros-custo")
 api_router.register("financeiro-lancamentos", LancamentoFinanceiroViewSet, basename="api-financeiro-lancamentos")

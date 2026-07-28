@@ -1,7 +1,9 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import CreateView, DetailView, TemplateView, UpdateView
 
 from core.mixins import FiltroCampanhaMixin, MensagemSucessoMixin, NivelAcessoMixin
@@ -19,9 +21,16 @@ from .forms import (
     EnvioComunicacaoFormulario,
     ListaBloqueioFormulario,
     ModeloMensagemFormulario,
+    NotificacaoInternaFiltroFormulario,
 )
-from .models import CampanhaComunicacao, CanalComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem
-from .services import contar_contatos_autorizados, registrar_descadastro, sincronizar_envios_campanha
+from .models import CampanhaComunicacao, CanalComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
+from .services import (
+    contar_contatos_autorizados,
+    listar_notificacoes_usuario,
+    marcar_todas_notificacoes_como_lidas,
+    registrar_descadastro,
+    sincronizar_envios_campanha,
+)
 
 
 class ComunicacaoHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
@@ -87,6 +96,7 @@ class ComunicacaoHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
         context["modelos_mensagem"] = modelos[:8]
         context["bloqueios"] = bloqueios[:8]
         context["envios_recentes"] = envios[:10]
+        context["notificacoes_recentes"] = listar_notificacoes_usuario(self.request.user, limite=6)
         context["status_opcoes"] = CampanhaComunicacao.Status.choices
         context["canal_opcoes"] = CanalComunicacao.choices
         context["filtros"] = {
@@ -102,6 +112,10 @@ class ComunicacaoHomeView(LoginRequiredMixin, NivelAcessoMixin, TemplateView):
             "respostas": envios.filter(status=EnvioComunicacao.Status.RESPONDIDO).count(),
             "bloqueios_total": bloqueios.count(),
             "contatos_autorizados": total_autorizados,
+            "notificacoes_nao_lidas": NotificacaoInterna.objects.filter(
+                usuario_destinatario=self.request.user,
+                lida_em__isnull=True,
+            ).count(),
         }
         return context
 
@@ -306,3 +320,50 @@ class EnvioComunicacaoUpdateView(
         registrar_descadastro(self.object, usuario=self.request.user)
         self.object.campanha_comunicacao.atualizar_metricas()
         return response
+
+
+class NotificacaoInternaListView(LoginRequiredMixin, TemplateView):
+    template_name = "comunicacao/notificacoes.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        formulario = NotificacaoInternaFiltroFormulario(self.request.GET or None)
+        queryset = listar_notificacoes_usuario(self.request.user)
+
+        if formulario.is_valid():
+            categoria = formulario.cleaned_data.get("categoria")
+            status = formulario.cleaned_data.get("status")
+            busca = (formulario.cleaned_data.get("busca") or "").strip()
+            if categoria:
+                queryset = queryset.filter(categoria=categoria)
+            if status == "nao_lidas":
+                queryset = queryset.filter(lida_em__isnull=True)
+            elif status == "lidas":
+                queryset = queryset.filter(lida_em__isnull=False)
+            if busca:
+                queryset = queryset.filter(Q(titulo__icontains=busca) | Q(mensagem__icontains=busca))
+
+        context["titulo"] = "Notificacoes internas"
+        context["descricao"] = "Acompanhe alertas operacionais, lembretes e sinais de risco da campanha."
+        context["filtro_form"] = formulario
+        context["notificacoes"] = queryset[:40]
+        context["nao_lidas"] = queryset.filter(lida_em__isnull=True).count()
+        return context
+
+
+class NotificacaoInternaMarcarLidaView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        notificacao = get_object_or_404(NotificacaoInterna, pk=pk, usuario_destinatario=request.user)
+        notificacao.marcar_como_lida()
+        proximo = request.POST.get("next", "").strip()
+        if proximo:
+            return redirect(proximo)
+        if notificacao.url_destino:
+            return redirect(notificacao.url_destino)
+        return redirect("comunicacao:notificacoes")
+
+
+class NotificacaoInternaMarcarTodasLidasView(LoginRequiredMixin, View):
+    def post(self, request):
+        marcar_todas_notificacoes_como_lidas(request.user)
+        return redirect("comunicacao:notificacoes")

@@ -1,8 +1,9 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from eleitores.models import ContatoCRM
 
-from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem
+from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
 from .services import analisar_destinatarios, registrar_descadastro, sincronizar_envios_campanha
 
 
@@ -252,3 +253,45 @@ class EnvioComunicacaoSerializer(serializers.ModelSerializer):
         registrar_descadastro(instancia, usuario=self.context["request"].user)
         instancia.campanha_comunicacao.atualizar_metricas()
         return instancia
+
+
+class NotificacaoInternaSerializer(serializers.ModelSerializer):
+    foi_lida = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = NotificacaoInterna
+        fields = [
+            "id",
+            "campanha",
+            "usuario_destinatario",
+            "titulo",
+            "mensagem",
+            "categoria",
+            "url_destino",
+            "origem_modelo",
+            "origem_id",
+            "enviada_em",
+            "lida_em",
+            "foi_lida",
+            "criado_em",
+            "atualizado_em",
+        ]
+        read_only_fields = (
+            "id",
+            "campanha",
+            "usuario_destinatario",
+            "titulo",
+            "mensagem",
+            "categoria",
+            "url_destino",
+            "origem_modelo",
+            "origem_id",
+            "enviada_em",
+            "criado_em",
+            "atualizado_em",
+        )
+
+    def validate(self, attrs):
+        if "lida_em" in attrs and attrs["lida_em"] is None:
+            attrs["lida_em"] = timezone.now()
+        return attrs

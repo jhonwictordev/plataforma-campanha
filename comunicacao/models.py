@@ -219,3 +219,59 @@ class EnvioComunicacao(ModeloCampanha):
         if self.status == self.Status.RESPONDIDO and not self.data_resposta:
             self.data_resposta = agora
         super().save(*args, **kwargs)
+
+
+class NotificacaoInterna(ModeloCampanha):
+    class Categorias(models.TextChoices):
+        AGENDA = "agenda", "Agenda"
+        COMUNICACAO = "comunicacao", "Comunicacao"
+        EQUIPE = "equipe", "Equipe"
+        FINANCEIRO = "financeiro", "Financeiro"
+        LGPD = "lgpd", "LGPD"
+        RETENCAO = "retencao", "Retencao"
+        SISTEMA = "sistema", "Sistema"
+
+    usuario_destinatario = models.ForeignKey(
+        "usuarios.Usuario",
+        on_delete=models.CASCADE,
+        related_name="notificacoes_internas",
+    )
+    titulo = models.CharField(max_length=160)
+    mensagem = models.TextField()
+    categoria = models.CharField(max_length=20, choices=Categorias.choices, default=Categorias.SISTEMA, db_index=True)
+    url_destino = models.CharField(max_length=255, blank=True)
+    origem_modelo = models.CharField(max_length=120, blank=True)
+    origem_id = models.CharField(max_length=64, blank=True)
+    chave_unica = models.CharField(max_length=140, blank=True, null=True)
+    enviada_em = models.DateTimeField(default=timezone.now)
+    lida_em = models.DateTimeField(blank=True, null=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Notificacao interna"
+        verbose_name_plural = "Notificacoes internas"
+        indexes = [
+            models.Index(fields=["usuario_destinatario", "lida_em"]),
+            models.Index(fields=["categoria", "criado_em"]),
+            models.Index(fields=["origem_modelo", "origem_id"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["campanha", "usuario_destinatario", "chave_unica"],
+                name="comunicacao_notificacao_chave_unica",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.usuario_destinatario} - {self.titulo}"
+
+    @property
+    def foi_lida(self) -> bool:
+        return self.lida_em is not None
+
+    def marcar_como_lida(self, salvar: bool = True):
+        if self.lida_em:
+            return self
+        self.lida_em = timezone.now()
+        if salvar:
+            self.save(update_fields=["lida_em", "atualizado_em"])
+        return self

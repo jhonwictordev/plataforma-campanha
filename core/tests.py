@@ -1,16 +1,29 @@
 import json
 import tempfile
+from datetime import timedelta
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
 from django.core.management import CommandError, call_command
+from django.utils import timezone
 from django.test import TestCase
+from django_celery_beat.models import PeriodicTask
 
+from agenda.models import EventoAgenda
 from auditoria.models import PoliticaRetencaoDados, SolicitacaoTitularDados
 from campanhas.models import Campanha
-from comunicacao.models import CampanhaComunicacao
+from comunicacao.models import CampanhaComunicacao, NotificacaoInterna
+from core.tasks import (
+    gerar_alertas_financeiros,
+    gerar_alertas_lgpd,
+    gerar_alertas_retencao,
+    gerar_alertas_tarefas,
+    gerar_lembretes_agenda,
+    sinalizar_campanhas_agendadas,
+)
 from core.management.commands.backup_banco import Command as BackupBancoCommand
+from equipe.models import IntegranteEquipe, TarefaEquipe
 from eleitores.models import ContatoCRM
 from financeiro.models import LancamentoFinanceiro
 from liderancas.models import Lideranca
@@ -95,3 +108,145 @@ class ComandosOperacionaisTestCase(TestCase):
         ):
             with self.assertRaises(CommandError):
                 comando.handle(formato="sql", destino=diretorio, nome_arquivo="", sobrescrever=False)
+
+    def test_sincronizar_rotinas_celery_cria_periodic_tasks(self):
+        self.executar_comando("sincronizar_rotinas_celery")
+        self.assertTrue(PeriodicTask.objects.filter(name="Plataforma - Lembretes de agenda", enabled=True).exists())
+        self.assertTrue(PeriodicTask.objects.filter(name="Plataforma - Alertas LGPD", enabled=True).exists())
+
+
+class RotinasCeleryNotificacoesTestCase(TestCase):
+    def setUp(self):
+        self.agora = timezone.now()
+        self.campanha = Campanha.objects.create(
+            nome_campanha="Campanha Rotinas",
+            nome_candidato="Candidata Rotinas",
+            cargo_disputado="prefeito",
+            partido="AAA",
+            numero_candidato="77",
+            estado="CE",
+            municipio="Fortaleza",
+            data_inicio="2026-07-01",
+            data_eleicao="2026-10-04",
+            situacao="ativa",
+        )
+        self.coordenador = Usuario.objects.create_user(
+            email="coord-rotinas@example.com",
+            password="senha123",
+            nome_completo="Coordenador Rotinas",
+            campanha=self.campanha,
+            nivel_acesso="coordenador_geral",
+        )
+        self.financeiro = Usuario.objects.create_user(
+            email="financeiro-rotinas@example.com",
+            password="senha123",
+            nome_completo="Financeiro Rotinas",
+            campanha=self.campanha,
+            nivel_acesso="financeiro",
+        )
+        self.participante = Usuario.objects.create_user(
+            email="participante-rotinas@example.com",
+            password="senha123",
+            nome_completo="Participante Rotinas",
+            campanha=self.campanha,
+            nivel_acesso="mobilizador",
+        )
+        self.campanha.coordenador_responsavel = self.coordenador
+        self.campanha.save(update_fields=["coordenador_responsavel", "atualizado_em"])
+
+        self.contato = ContatoCRM.objects.create(
+            campanha=self.campanha,
+            nome_completo="Contato Rotinas",
+            telefone="85999990001",
+            whatsapp="85999990001",
+            cidade="Fortaleza",
+            consentimento_comunicacao=True,
+            canal_autorizado="whatsapp",
+            status_funil=ContatoCRM.EtapasFunil.APOIADOR,
+        )
+        self.comunicacao = CampanhaComunicacao.objects.create(
+            campanha=self.campanha,
+            nome="Comunicacao Rotinas",
+            assunto="Aviso de agenda",
+            conteudo="Conteudo demonstrativo",
+            canal="whatsapp",
+            data_envio=self.agora - timedelta(minutes=5),
+            responsavel=self.coordenador,
+            status=CampanhaComunicacao.Status.AGENDADA,
+        )
+        self.comunicacao.destinatarios.set([self.contato])
+
+        data_evento = timezone.localtime(self.agora + timedelta(hours=2))
+        self.evento = EventoAgenda.objects.create(
+            campanha=self.campanha,
+            titulo="Reuniao de mobilizacao",
+            tipo=EventoAgenda.Tipos.REUNIAO,
+            data=data_evento.date(),
+            horario_inicial=data_evento.time().replace(second=0, microsecond=0),
+            horario_final=(data_evento + timedelta(hours=1)).time().replace(second=0, microsecond=0),
+            responsavel=self.coordenador,
+            status=EventoAgenda.Status.CONFIRMADO,
+        )
+        self.evento.participantes.set([self.participante])
+
+        self.integrante = IntegranteEquipe.objects.create(
+            campanha=self.campanha,
+            nome="Integrante Rotinas",
+            funcao="Mobilizador",
+            departamento="Mobilizacao",
+            usuario=self.participante,
+        )
+        self.tarefa = TarefaEquipe.objects.create(
+            campanha=self.campanha,
+            titulo="Pendencia de rua",
+            responsavel=self.integrante,
+            prazo=self.agora - timedelta(hours=1),
+            status=TarefaEquipe.Status.A_FAZER,
+        )
+
+        self.lancamento = LancamentoFinanceiro.objects.create(
+            campanha=self.campanha,
+            descricao="Conta de som",
+            tipo=LancamentoFinanceiro.Tipos.DESPESA,
+            valor_reais="500.00",
+            data_vencimento=timezone.localdate() - timedelta(days=1),
+            responsavel_lancamento=self.financeiro,
+            status=LancamentoFinanceiro.Status.PENDENTE,
+        )
+
+        self.solicitacao = SolicitacaoTitularDados.objects.create(
+            campanha=self.campanha,
+            nome_solicitante="Titular Rotinas",
+            tipo_solicitacao=SolicitacaoTitularDados.TiposSolicitacao.ACESSO,
+            status=SolicitacaoTitularDados.Status.EM_ANALISE,
+            descricao="Solicitacao de acesso aos dados.",
+            responsavel_interno=self.coordenador,
+            prazo_resposta=timezone.localdate() + timedelta(days=1),
+        )
+        self.politica = PoliticaRetencaoDados.objects.create(
+            campanha=self.campanha,
+            nome="Politica CRM",
+            tipo_registro=PoliticaRetencaoDados.TiposRegistro.CONTATOS,
+            dias_retencao=1,
+            dias_ate_anonimizacao=1,
+            responsavel=self.coordenador,
+        )
+        self.contato.criado_em = self.agora - timedelta(days=10)
+        self.contato.save(update_fields=["criado_em"])
+
+    def test_rotinas_geram_notificacoes_internas(self):
+        self.assertEqual(sinalizar_campanhas_agendadas()["campanhas"], 1)
+        self.assertEqual(gerar_lembretes_agenda()["eventos"], 1)
+        self.assertEqual(gerar_alertas_tarefas()["tarefas"], 1)
+        self.assertEqual(gerar_alertas_financeiros()["lancamentos"], 1)
+        self.assertEqual(gerar_alertas_lgpd()["solicitacoes"], 1)
+        self.assertEqual(gerar_alertas_retencao()["politicas"], 1)
+        self.assertGreaterEqual(NotificacaoInterna.objects.count(), 6)
+
+    def test_rotinas_sao_idempotentes_por_chave_unica(self):
+        sinalizar_campanhas_agendadas()
+        sinalizar_campanhas_agendadas()
+        self.assertEqual(
+            NotificacaoInterna.objects.filter(origem_modelo="CampanhaComunicacao").count(),
+            1,
+        )

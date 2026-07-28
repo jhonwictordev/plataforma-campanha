@@ -1,6 +1,8 @@
+from django.utils import timezone
+
 from eleitores.models import ContatoCRM
 
-from .models import EnvioComunicacao, ListaBloqueio
+from .models import EnvioComunicacao, ListaBloqueio, NotificacaoInterna
 
 
 def contar_contatos_autorizados(campanha_id, canal=None) -> int:
@@ -113,4 +115,65 @@ def registrar_descadastro(envio, usuario=None):
             "motivo": "Descadastro registrado no acompanhamento da comunicacao.",
             "solicitado_por": usuario,
         },
+    )
+
+
+def criar_notificacao_interna(
+    *,
+    campanha,
+    usuario_destinatario,
+    titulo: str,
+    mensagem: str,
+    categoria: str,
+    url_destino: str = "",
+    chave_unica: str | None = None,
+    origem_modelo: str = "",
+    origem_id: str = "",
+):
+    defaults = {
+        "titulo": titulo,
+        "mensagem": mensagem,
+        "categoria": categoria,
+        "url_destino": url_destino,
+        "origem_modelo": origem_modelo,
+        "origem_id": origem_id,
+        "enviada_em": timezone.now(),
+    }
+    if chave_unica:
+        return NotificacaoInterna.objects.update_or_create(
+            campanha=campanha,
+            usuario_destinatario=usuario_destinatario,
+            chave_unica=chave_unica,
+            defaults=defaults,
+        )
+    notificacao = NotificacaoInterna.objects.create(
+        campanha=campanha,
+        usuario_destinatario=usuario_destinatario,
+        chave_unica=None,
+        **defaults,
+    )
+    return notificacao, True
+
+
+def contar_notificacoes_nao_lidas(usuario) -> int:
+    if not getattr(usuario, "is_authenticated", False):
+        return 0
+    return NotificacaoInterna.objects.filter(usuario_destinatario=usuario, lida_em__isnull=True).count()
+
+
+def listar_notificacoes_usuario(usuario, limite: int | None = None):
+    if not getattr(usuario, "is_authenticated", False):
+        return NotificacaoInterna.objects.none()
+    queryset = NotificacaoInterna.objects.filter(usuario_destinatario=usuario).order_by("-criado_em", "-pk")
+    if limite:
+        return queryset[:limite]
+    return queryset
+
+
+def marcar_todas_notificacoes_como_lidas(usuario) -> int:
+    if not getattr(usuario, "is_authenticated", False):
+        return 0
+    return NotificacaoInterna.objects.filter(usuario_destinatario=usuario, lida_em__isnull=True).update(
+        lida_em=timezone.now(),
+        atualizado_em=timezone.now(),
     )

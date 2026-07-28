@@ -1,12 +1,17 @@
-from core.api import ViewSetCampanhaProtegido
-from core.permissions import PAPEIS_COMUNICACAO_ESCRITA, PAPEIS_COMUNICACAO_LEITURA
+from django.utils import timezone
 
-from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem
+from core.api import ViewSetCampanhaProtegido
+from core.permissions import PAPEIS_COMUNICACAO_ESCRITA, PAPEIS_COMUNICACAO_LEITURA, PAPEIS_TODOS_MODULOS
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+
+from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
 from .serializers import (
     CampanhaComunicacaoSerializer,
     EnvioComunicacaoSerializer,
     ListaBloqueioSerializer,
     ModeloMensagemSerializer,
+    NotificacaoInternaSerializer,
 )
 
 
@@ -56,3 +61,27 @@ class EnvioComunicacaoViewSet(ViewSetCampanhaProtegido):
     filterset_fields = ("canal", "status", "campanha_comunicacao", "contato", "cancelou_inscricao")
     search_fields = ("contato__nome_completo", "erro_envio", "resposta_recebida", "mensagem_enviada")
     ordering_fields = ("data_programada", "data_envio", "data_entrega", "data_resposta", "criado_em", "atualizado_em")
+
+
+class NotificacaoInternaViewSet(ViewSetCampanhaProtegido):
+    queryset = NotificacaoInterna.objects.select_related("campanha", "usuario_destinatario").order_by("-criado_em", "-pk")
+    serializer_class = NotificacaoInternaSerializer
+    niveis_permitidos_leitura = PAPEIS_TODOS_MODULOS
+    niveis_permitidos_escrita = PAPEIS_TODOS_MODULOS
+    filterset_fields = ("categoria", "lida_em")
+    search_fields = ("titulo", "mensagem", "origem_modelo")
+    ordering_fields = ("criado_em", "enviada_em", "lida_em", "atualizado_em")
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return queryset.filter(usuario_destinatario=self.request.user)
+
+    def partial_update(self, request, *args, **kwargs):
+        instancia = self.get_object()
+        if instancia.usuario_destinatario_id != request.user.id:
+            raise PermissionDenied("Voce nao pode alterar notificacoes de outro usuario.")
+        instancia.lida_em = timezone.now()
+        instancia.save(update_fields=["lida_em", "atualizado_em"])
+        serializer = self.get_serializer(instancia)
+        return Response(serializer.data)

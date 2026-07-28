@@ -2,7 +2,7 @@ from django import forms
 
 from core.forms import FormularioBootstrapMixin
 
-from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem
+from .models import CampanhaComunicacao, EnvioComunicacao, ListaBloqueio, ModeloMensagem, NotificacaoInterna
 from .services import analisar_destinatarios
 
 
@@ -147,3 +147,21 @@ class EnvioComunicacaoFormulario(FormularioBootstrapMixin):
         if status == EnvioComunicacao.Status.RESPONDIDO and not dados.get("resposta_recebida"):
             self.add_error("resposta_recebida", "Informe a resposta recebida do destinatario.")
         return dados
+
+
+class NotificacaoInternaFiltroFormulario(forms.Form):
+    categoria = forms.ChoiceField(choices=[("", "Todas")] + list(NotificacaoInterna.Categorias.choices), required=False)
+    status = forms.ChoiceField(
+        choices=[("", "Todas"), ("nao_lidas", "Nao lidas"), ("lidas", "Lidas")],
+        required=False,
+    )
+    busca = forms.CharField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            if isinstance(campo.widget, forms.Select):
+                campo.widget.attrs["class"] = "form-select"
+            else:
+                campo.widget.attrs["class"] = "form-control"
+            campo.widget.attrs.setdefault("placeholder", campo.label)

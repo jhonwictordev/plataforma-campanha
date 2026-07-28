@@ -4,6 +4,15 @@
         <h1 class="h4 mb-0">{{ nome_aplicacao }}</h1>
     </div>
     <div class="topbar-actions">
+        <a class="btn btn-outline-secondary position-relative" href="{% url 'comunicacao:notificacoes' %}">
+            <i class="bi bi-bell"></i>
+            Alertas
+            {% if notificacoes_nao_lidas %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">
+                    {{ notificacoes_nao_lidas }}
+                </span>
+            {% endif %}
+        </a>
         <button class="btn btn-outline-secondary" type="button" data-tema-toggle>
             <i class="bi bi-circle-half"></i>
             Tema

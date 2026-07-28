@@ -71,6 +71,12 @@ celery -A config worker -l info
 celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 ```
 
+Depois de subir as migrations, registre as rotinas padrao no scheduler:
+
+```bash
+python manage.py sincronizar_rotinas_celery
+```
+
 ## 5. Proxy reverso
 
 - Exponha apenas HTTPS para o publico.

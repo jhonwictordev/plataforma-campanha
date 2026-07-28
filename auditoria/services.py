@@ -33,7 +33,11 @@ def usuario_admin(usuario) -> bool:
     return bool(usuario.is_superuser or getattr(usuario, "is_staff", False))
 
 
-def filtrar_por_campanha(queryset, usuario, campanha_id: str = ""):
+def filtrar_por_campanha(queryset, usuario=None, campanha_id: str = ""):
+    if usuario is None:
+        if campanha_id:
+            return queryset.filter(campanha_id=campanha_id)
+        return queryset
     if usuario_admin(usuario):
         if campanha_id:
             return queryset.filter(campanha_id=campanha_id)

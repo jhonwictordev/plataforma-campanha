@@ -10,12 +10,18 @@ from .views import (
     ListaBloqueioUpdateView,
     ModeloMensagemCreateView,
     ModeloMensagemUpdateView,
+    NotificacaoInternaListView,
+    NotificacaoInternaMarcarLidaView,
+    NotificacaoInternaMarcarTodasLidasView,
 )
 
 app_name = "comunicacao"
 
 urlpatterns = [
     path("", ComunicacaoHomeView.as_view(), name="home"),
+    path("notificacoes/", NotificacaoInternaListView.as_view(), name="notificacoes"),
+    path("notificacoes/marcar-todas/", NotificacaoInternaMarcarTodasLidasView.as_view(), name="notificacoes_marcar_todas"),
+    path("notificacoes/<uuid:pk>/marcar-lida/", NotificacaoInternaMarcarLidaView.as_view(), name="notificacao_marcar_lida"),
     path("campanhas/nova/", CampanhaComunicacaoCreateView.as_view(), name="campanha_nova"),
     path("campanhas/<uuid:pk>/", CampanhaComunicacaoDetailView.as_view(), name="campanha_detalhe"),
     path("campanhas/<uuid:pk>/editar/", CampanhaComunicacaoUpdateView.as_view(), name="campanha_editar"),
