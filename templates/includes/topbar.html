@@ -1,10 +1,17 @@
 <header class="topbar">
     <div>
-        <p class="eyebrow mb-1">Operação eleitoral</p>
+        <p class="eyebrow mb-1">Operacao eleitoral</p>
         <h1 class="h4 mb-0">{{ nome_aplicacao }}</h1>
+        <div class="topbar-context">
+            {% if request.user.campanha %}
+                {{ request.user.campanha.nome_campanha }}
+            {% else %}
+                Visao administrativa consolidada
+            {% endif %}
+        </div>
     </div>
     <div class="topbar-actions">
-        <a class="btn btn-outline-secondary position-relative" href="{% url 'comunicacao:notificacoes' %}">
+        <a class="btn btn-icon-label btn-outline-secondary position-relative" href="{% url 'comunicacao:notificacoes' %}">
             <i class="bi bi-bell"></i>
             Alertas
             {% if notificacoes_nao_lidas %}
@@ -13,17 +20,17 @@
                 </span>
             {% endif %}
         </a>
-        <button class="btn btn-outline-secondary" type="button" data-tema-toggle>
+        <button class="btn btn-icon-label btn-outline-secondary" type="button" data-tema-toggle>
             <i class="bi bi-circle-half"></i>
             Tema
         </button>
-        <a class="btn btn-outline-primary" href="{% url 'usuarios:perfil' %}">
+        <a class="btn btn-icon-label btn-outline-primary" href="{% url 'usuarios:perfil' %}">
             <i class="bi bi-person-circle"></i>
             {{ request.user.nome_primeiro }}
         </a>
         <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button class="btn btn-dark-subtle" type="submit">
+            <button class="btn btn-icon-label btn-dark-subtle" type="submit">
                 <i class="bi bi-box-arrow-right"></i>
                 Sair
             </button>

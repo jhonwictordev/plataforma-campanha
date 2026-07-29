@@ -1,12 +1,16 @@
 <aside class="sidebar border-end">
     <div class="sidebar-brand">
-        <div class="brand-mark">CP</div>
+        <div class="brand-mark">PC</div>
         <div>
-            <strong>Plataforma</strong>
-            <small>Campanha politica</small>
+            <strong>Plataforma Campanha</strong>
+            <small>Centro de comando eleitoral</small>
         </div>
     </div>
-    <nav class="nav flex-column gap-1">
+    <div class="sidebar-status">
+        <span>Operacao ativa</span>
+        <strong>{{ request.user.get_nivel_acesso_display|default:"Usuario" }}</strong>
+    </div>
+    <nav class="nav flex-column gap-1 sidebar-nav">
         <a class="nav-link" href="{% url 'dashboard:home' %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
         <a class="nav-link" href="{% url 'campanhas:lista' %}"><i class="bi bi-megaphone"></i> Campanhas</a>
         {% if request.user.is_superuser or request.user.is_staff or request.user.nivel_acesso == "administrador" or request.user.nivel_acesso == "coordenador_geral" %}

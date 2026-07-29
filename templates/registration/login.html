@@ -1,60 +1,73 @@
 {% extends "base.html" %}
 {% block title %}Entrar | {{ nome_aplicacao }}{% endblock %}
 {% block content %}
-<div class="row justify-content-center align-items-center min-vh-100">
-    <div class="col-xl-10">
-        <div class="card shadow-lg border-0 overflow-hidden">
-            <div class="row g-0">
-                <div class="col-lg-6 login-panel p-5">
-                    <p class="eyebrow">Sistema de gestao eleitoral</p>
-                    <h2 class="display-6 fw-bold">Coordene territorio, equipe e relacionamento em um so lugar.</h2>
-                    <p class="text-secondary mt-3">Base focada em seguranca, responsividade, rastreabilidade e separacao por campanha.</p>
-                    <div class="d-flex flex-wrap gap-3 mt-4">
-                        <span class="badge rounded-pill text-bg-light">Bootstrap 5</span>
-                        <span class="badge rounded-pill text-bg-light">Chart.js</span>
-                        <span class="badge rounded-pill text-bg-light">Leaflet</span>
-                        <span class="badge rounded-pill text-bg-light">Django REST</span>
-                    </div>
+<div class="login-stage">
+    <div class="login-shell">
+        <section class="login-panel">
+            <div class="login-brandline">
+                <span class="brand-mark">PC</span>
+                <span>Plataforma Campanha</span>
+            </div>
+            <p class="eyebrow">Centro de comando eleitoral</p>
+            <h2>Operacao, territorio e relacionamento sob controle.</h2>
+            <p class="login-copy">Painel seguro para coordenar liderancas, CRM, agenda, equipe, metas, financeiro, comunicacao e auditoria com separacao por campanha.</p>
+            <div class="login-signal-grid">
+                <div>
+                    <strong>LGPD</strong>
+                    <span>Consentimento e auditoria</span>
                 </div>
-                <div class="col-lg-6 bg-body p-5">
-                    <h1 class="h3 mb-3">Entrar</h1>
-                    <form method="post" novalidate>
-                        {% csrf_token %}
-                        {% if next %}
-                            <input type="hidden" name="next" value="{{ next }}">
-                        {% endif %}
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ form.username.id_for_label }}">E-mail</label>
-                            {{ form.username }}
-                            {% for error in form.username.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ form.password.id_for_label }}">Senha</label>
-                            {{ form.password }}
-                            {% for error in form.password.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger">
-                                {% for error in form.non_field_errors %}
-                                    <div>{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                        {% elif form.errors %}
-                            <div class="alert alert-danger">Nao foi possivel autenticar. Verifique as credenciais e tente novamente.</div>
-                        {% endif %}
-                        <button class="btn btn-primary w-100" type="submit">Acessar plataforma</button>
-                    </form>
-                    <div class="d-flex justify-content-between mt-3 small">
-                        <a href="{% url 'password_reset' %}">Esqueci minha senha</a>
-                        <a href="{% url 'admin:index' %}">Administracao</a>
-                    </div>
+                <div>
+                    <strong>Mapa</strong>
+                    <span>Territorio agregado</span>
+                </div>
+                <div>
+                    <strong>CRM</strong>
+                    <span>Funil e Kanban</span>
                 </div>
             </div>
-        </div>
+        </section>
+        <section class="login-card">
+            <p class="eyebrow mb-2">Acesso restrito</p>
+            <h1>Entrar</h1>
+            <p class="text-secondary mb-4">Use seu e-mail institucional para acessar a operacao.</p>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if next %}
+                    <input type="hidden" name="next" value="{{ next }}">
+                {% endif %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.username.id_for_label }}">E-mail</label>
+                    {{ form.username }}
+                    {% for error in form.username.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.password.id_for_label }}">Senha</label>
+                    {{ form.password }}
+                    {% for error in form.password.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% elif form.errors %}
+                    <div class="alert alert-danger">Nao foi possivel autenticar. Verifique as credenciais e tente novamente.</div>
+                {% endif %}
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-shield-lock"></i>
+                    Acessar operacao
+                </button>
+            </form>
+            <div class="d-flex justify-content-between mt-4 small">
+                <a href="{% url 'password_reset' %}">Recuperar senha</a>
+                <a href="{% url 'admin:index' %}">Administracao</a>
+            </div>
+        </section>
     </div>
 </div>
 {% endblock %}

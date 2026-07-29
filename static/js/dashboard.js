@@ -41,6 +41,10 @@ function chartGridColor() {
     return resolveCssVar("--line-color", "rgba(148, 163, 184, 0.2)");
 }
 
+function palette(name, fallback) {
+    return resolveCssVar(name, fallback);
+}
+
 function buildChart(id, config) {
     const ctx = document.getElementById(id);
     if (!ctx || !window.Chart) {
@@ -62,16 +66,16 @@ function initEvolucaoChart() {
                 {
                     label: "Contatos",
                     data: data.map((item) => item.contatos),
-                    borderColor: resolveCssVar("--primary", "#1d4ed8"),
-                    backgroundColor: "rgba(29, 78, 216, 0.18)",
+                    borderColor: palette("--primary", "#256f67"),
+                    backgroundColor: "rgba(37, 111, 103, 0.16)",
                     tension: 0.35,
                     fill: true,
                 },
                 {
                     label: "Liderancas",
                     data: data.map((item) => item.liderancas),
-                    borderColor: "#0f766e",
-                    backgroundColor: "rgba(15, 118, 110, 0.12)",
+                    borderColor: palette("--accent", "#c77a2b"),
+                    backgroundColor: "rgba(199, 122, 43, 0.14)",
                     tension: 0.35,
                     fill: true,
                 },
@@ -113,7 +117,7 @@ function initStatusChart() {
             datasets: [
                 {
                     data: data.map((item) => item.total),
-                    backgroundColor: ["#1d4ed8", "#2563eb", "#0f766e", "#16a34a", "#eab308", "#f97316", "#ef4444", "#7c3aed"],
+                    backgroundColor: ["#256f67", "#315d89", "#c77a2b", "#1f7a4d", "#b7791f", "#8a4f2d", "#b42318", "#5f6f52"],
                 },
             ],
         },
@@ -143,8 +147,8 @@ function initCidadeChart() {
                 {
                     label: "Contatos",
                     data: data.map((item) => item.total),
-                    backgroundColor: resolveCssVar("--primary", "#1d4ed8"),
-                    borderRadius: 12,
+                    backgroundColor: palette("--primary", "#256f67"),
+                    borderRadius: 8,
                 },
             ],
         },
@@ -181,8 +185,8 @@ function initBairroChart() {
                 {
                     label: "Contatos",
                     data: data.map((item) => item.total),
-                    backgroundColor: "#0f766e",
-                    borderRadius: 12,
+                    backgroundColor: "#315d89",
+                    borderRadius: 8,
                 },
             ],
         },
@@ -216,8 +220,8 @@ function initLiderancasRegiaoChart() {
                 {
                     label: "Liderancas",
                     data: data.map((item) => item.total),
-                    backgroundColor: "#f97316",
-                    borderRadius: 12,
+                    backgroundColor: "#c77a2b",
+                    borderRadius: 8,
                 },
             ],
         },
@@ -251,8 +255,8 @@ function initMetasEquipeChart() {
                 {
                     label: "% de conclusao",
                     data: data.map((item) => item.percentual),
-                    backgroundColor: "#7c3aed",
-                    borderRadius: 12,
+                    backgroundColor: "#5f6f52",
+                    borderRadius: 8,
                 },
             ],
         },
@@ -287,14 +291,14 @@ function initFinanceiroChart() {
                 {
                     label: "Receitas",
                     data: data.map((item) => item.receitas),
-                    backgroundColor: "#16a34a",
-                    borderRadius: 12,
+                    backgroundColor: "#1f7a4d",
+                    borderRadius: 8,
                 },
                 {
                     label: "Despesas",
                     data: data.map((item) => item.despesas),
-                    backgroundColor: "#ef4444",
-                    borderRadius: 12,
+                    backgroundColor: "#b42318",
+                    borderRadius: 8,
                 },
             ],
         },
@@ -332,7 +336,7 @@ function initAlertasChart() {
             datasets: [
                 {
                     data: data.map((item) => item.total),
-                    backgroundColor: ["#e11d48", "#f97316", "#0f766e", "#1d4ed8", "#7c3aed", "#16a34a", "#334155"],
+                    backgroundColor: ["#b42318", "#c77a2b", "#256f67", "#315d89", "#5f6f52", "#1f7a4d", "#334155"],
                     borderWidth: 0,
                 },
             ],
@@ -369,8 +373,8 @@ function initMapaCadastros() {
         const radius = Math.min(18, 6 + item.total * 1.5);
         const marker = L.circleMarker([item.lat, item.lng], {
             radius,
-            color: resolveCssVar("--primary", "#1d4ed8"),
-            fillColor: resolveCssVar("--primary", "#1d4ed8"),
+            color: palette("--primary", "#256f67"),
+            fillColor: palette("--primary", "#256f67"),
             fillOpacity: 0.24,
             weight: 2,
         });
