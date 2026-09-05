@@ -15,6 +15,14 @@ jobs:
       DJANGO_SETTINGS_MODULE: config.settings.test
       ALLOWED_HOSTS: localhost,testserver
       CSRF_TRUSTED_ORIGINS: http://localhost,http://testserver
+      POSTGRES_DB: plataforma_campanha_priority_ci
+      POSTGRES_USER: plataforma_priority_ci
+      POSTGRES_PASSWORD: plataforma_priority_ci
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
       HEALTHCHECK_VERIFY_REDIS: "0"
     steps:
       - name: Checkout
@@ -36,4 +44,3 @@ jobs:
 
       - name: Run three priority flows
         run: python manage.py test core.tests_fluxos_prioritarios --settings=config.settings.test --verbosity=2
-
