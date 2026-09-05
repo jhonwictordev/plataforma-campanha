@@ -1,5 +1,7 @@
 # Plataforma Campanha
 
+[![Priority campaign flows](https://github.com/jhonwictordev/plataforma-campanha/actions/workflows/priority-flows.yml/badge.svg)](https://github.com/jhonwictordev/plataforma-campanha/actions/workflows/priority-flows.yml)
+
 Sistema web completo para gestao de campanhas politicas com Django, PostgreSQL, Bootstrap, Chart.js, Leaflet, Celery e Redis. O projeto centraliza CRM eleitoral, liderancas, agenda, equipe, metas, financeiro, comunicacao, dashboard, mapa territorial, relatorios e auditoria com foco em seguranca e LGPD.
 
 ## Principais modulos

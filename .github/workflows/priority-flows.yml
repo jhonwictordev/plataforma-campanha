@@ -1,0 +1,39 @@
+name: Priority campaign flows
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  three-priority-flows:
+    runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ci-priority-flows-secret-key
+      DEBUG: "False"
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      ALLOWED_HOSTS: localhost,testserver
+      CSRF_TRUSTED_ORIGINS: http://localhost,http://testserver
+      HEALTHCHECK_VERIFY_REDIS: "0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check Django project
+        run: python manage.py check --settings=config.settings.test
+
+      - name: Run three priority flows
+        run: python manage.py test core.tests_fluxos_prioritarios --settings=config.settings.test --verbosity=2
+
