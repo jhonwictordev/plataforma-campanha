@@ -191,6 +191,19 @@ Os payloads recebidos sao mascarados no log tecnico para reduzir exposicao de da
 
 ## Testes e validacao
 
+### Demonstracao dos fluxos prioritarios
+
+Para avaliar o produto sem percorrer todos os modulos, use o roteiro de
+[tres fluxos prioritarios](docs/fluxos-prioritarios.md). Ele cobre a criacao de uma
+campanha com permissoes, o acompanhamento de um contato e a geracao segura de um
+relatorio. O documento inclui a matriz de permissoes e utiliza somente dados sinteticos.
+
+Execute a prova automatizada isoladamente com:
+
+```bash
+python manage.py test core.tests_fluxos_prioritarios --settings=config.settings.test
+```
+
 ```bash
 python manage.py check
 python manage.py makemigrations --check --dry-run --noinput --settings=config.settings.test
