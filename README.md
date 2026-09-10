@@ -1,5 +1,7 @@
 # Plataforma Campanha
 
+[![CI](https://github.com/jhonwictordev/plataforma-campanha/actions/workflows/ci.yml/badge.svg)](https://github.com/jhonwictordev/plataforma-campanha/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e.svg)](LICENSE) [![Integration](https://img.shields.io/badge/public%20demo-synthetic%20data-0ea5e9.svg)](https://jhonwictordev.github.io/plataforma-campanha/) [![Stack](https://img.shields.io/badge/stack-Django%20%2B%20PostgreSQL-092e20.svg)](#principais-modulos)
+
 > See the [portfolio overview](docs/portfolio-overview.md) for architecture, core flow, data boundaries and technical decisions.
 
 [![Priority campaign flows](https://github.com/jhonwictordev/plataforma-campanha/actions/workflows/priority-flows.yml/badge.svg)](https://github.com/jhonwictordev/plataforma-campanha/actions/workflows/priority-flows.yml)
